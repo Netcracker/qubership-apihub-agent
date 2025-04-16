@@ -1,0 +1,27 @@
+version: '1.29'
+serverHostname: 'qubership-apihub.localhost'
+image:
+  repository: 'ghcr.io/netcracker/qubership-apihub-agent' 
+  tag: 'dev'
+replicas: 1  
+
+resource:
+  memory:
+    limit: "256Mi"
+#    request: "256Mi"
+  cpu:  
+    request: "30m"
+    limit: "1"
+
+logLevel: "INFO"
+
+apihubUrl: 'https://apihub.netcracker.com'
+accessToken: 'uHw6L2LnuxY5z46qcVnN7fv7zaW6FpthbuG8wVYeYmYKzQjGeddVeFwdDHy1zGyB'
+cloudName: '' #TO_BE_SET
+#apihubAgentProdIngress: false
+agentUrl: '' #TO_BE_SET
+agentName: ''
+createClusterRole: false
+
+insecureProxy: true
+
