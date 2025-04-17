@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/managed-by: helm
 spec:
   rules:
-  - host: '{{ .Values.serverHostname }}'
+  - host: '{{ .Values.agentUrl }}'
     http:
       paths:
       - path: /

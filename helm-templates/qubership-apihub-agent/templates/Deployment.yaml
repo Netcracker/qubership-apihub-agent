@@ -46,8 +46,8 @@ spec:
                 env:
                 -   name: LOG_LEVEL
                     value: '{{ .Values.logLevel }}'
-                -   name: version
-                    value: '{{ .Values.version }}'
+                -   name: PAAS_PLATFORM
+                    value: 'KUBERNETES'
                 -   name: APIHUB_URL
                     value: '{{ .Values.apihubUrl }}'
                 -   name: APIHUB_ACCESS_TOKEN
@@ -57,11 +57,13 @@ spec:
                             key: access_token
                 -   name: CLOUD_NAME
                     value: '{{ .Values.cloudName }}'
-                -   name: version
+                -   name: ARTIFACT_DESCRIPTOR_VERSION
                     value: '{{ .Values.version }}'
                 -   name: AGENT_URL
                     value: '{{ .Values.agentUrl }}'
-                -   name: namespace
+                -   name: NAMESPACE
+                    value: '{{ .Release.Namespace }}'
+                -   name: MICROSERVICE_NAMESPACE
                     value: '{{ .Release.Namespace }}'
                 -   name: AGENT_NAME
                     value: '{{ .Values.agentName }}'
@@ -69,12 +71,10 @@ spec:
                     value: '{{ .Values.insecureProxy }}'
 #                -   name: DISCOVERY_TIMEOUT_SEC
 #                    value: '{{ .Values.DISCOVERY_TIMEOUT_SEC }}'
-                -   name: MICROSERVICE_NAMESPACE
-                    value: '{{ .Release.Namespace }}'
                 resources:
                     requests:
                         cpu: {{ .Values.resource.cpu.request }}
-                        memory: '{{ .Values.resource.memory.limit }}'
+                        memory: '{{ .Values.resource.memory.request }}'
                     limits:
                         cpu: {{ .Values.resource.cpu.limit }}
                         memory: '{{ .Values.resource.memory.limit }}'
