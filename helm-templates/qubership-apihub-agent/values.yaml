@@ -1,8 +1,8 @@
 qubershipApihubAgent:
-  version: 'dev'
+  version: ''
   image:
-    repository: 'ghcr.io/netcracker/qubership-apihub-agent' 
-    tag: 'dev'
+    repository: '' 
+    tag: ''
   replicas: 1  
 
   resource:
@@ -13,14 +13,14 @@ qubershipApihubAgent:
       request: "30m"
       limit: "1"
 
-  logLevel: "INFO"
+  .logLevel: ""
 
   env:
-    apihubUrl: 'https://qubership-apihub.localhost'
+    apihubUrl: ''
     accessToken: '' # set access token from qubership-apihub
-    cloudName: 'Kind'
-    agentUrl: 'qubership-apihub-agent.localhost' 
-    agentName: 'qsAgent'
+    cloudName: ''
+    agentUrl: '' 
+    agentName: ''
     insecureProxy: true
     discoveryTimeoutSec: 15
     

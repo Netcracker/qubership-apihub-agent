@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/managed-by: helm
 spec:
   rules:
-  - host: '{{ .Values.agentUrl }}'
+  - host: '{{ .Values.qubershipApihubAgent.env.agentUrl }}'
     http:
       paths:
       - path: /
