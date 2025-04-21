@@ -16,11 +16,9 @@ qubershipApihubAgent:
   logLevel: "INFO"
 
   env:
-    apihubUrl: 'https://qubership-apihub.localhost'
+    apihubUrl: 'http://qubership-apihub-ui.apihub.svc.cluster.local:8080'
     accessToken: '' # set access token from qubership-apihub
     cloudName: 'Kind'
-    agentUrl: 'qubership-apihub-agent.localhost' 
+    agentUrl: 'http://qubership-apihub-agent.qubership-apihub-agent.svc.cluster.local:8080' 
     agentName: 'qsAgent'
     insecureProxy: true
-    discoveryTimeoutSec: 15
-    

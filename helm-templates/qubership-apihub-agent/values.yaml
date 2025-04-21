@@ -1,8 +1,10 @@
+# todo: add descriptions
+
 qubershipApihubAgent:
   version: ''
   image:
-    repository: '' 
-    tag: ''
+    repository: 'ghcr.io/netcracker/qubership-apihub-agent' 
+    tag: 'latest'
   replicas: 1  
 
   resource:
@@ -13,7 +15,7 @@ qubershipApihubAgent:
       request: "30m"
       limit: "1"
 
-  .logLevel: ""
+  logLevel: "INFO"
 
   env:
     apihubUrl: ''
