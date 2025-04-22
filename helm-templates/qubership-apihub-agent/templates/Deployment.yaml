@@ -11,7 +11,7 @@ metadata:
         app.kubernetes.io/part-of: qubership-apihub-agent
         app.kubernetes.io/managed-by: helm
 spec:
-    replicas: {{ .Values.qubershipApihubAgent.replicas }}
+    replicas: 1
     strategy:
         rollingUpdate:
             maxSurge: 25%
