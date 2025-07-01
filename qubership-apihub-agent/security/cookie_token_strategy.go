@@ -17,34 +17,35 @@ package security
 import (
 	"context"
 	"fmt"
-	"net/http"
-
 	"github.com/Netcracker/qubership-apihub-agent/client"
-
+	"github.com/Netcracker/qubership-apihub-agent/view"
 	"github.com/shaj13/go-guardian/v2/auth"
+	"net/http"
 )
 
-func NewApihubApiKeyStrategy(apihubClient client.ApihubClient) auth.Strategy {
-	return &apihubApiKeyStrategyImpl{apihubClient: apihubClient}
+func NewCookieTokenStrategy(apihubClient client.ApihubClient) auth.Strategy {
+	return &сookieTokenStrategyImpl{apihubClient: apihubClient}
 }
 
-type apihubApiKeyStrategyImpl struct {
+type сookieTokenStrategyImpl struct {
 	apihubClient client.ApihubClient
 }
 
-func (a apihubApiKeyStrategyImpl) Authenticate(ctx context.Context, r *http.Request) (auth.Info, error) {
-	apiKey := r.Header.Get("api-key")
-	if apiKey == "" {
-		return nil, fmt.Errorf("authentication failed: %v is empty", "api-key")
+func (a сookieTokenStrategyImpl) Authenticate(ctx context.Context, r *http.Request) (auth.Info, error) {
+	cookie, err := r.Cookie(view.AccessTokenCookieName)
+	if err != nil {
+		return nil, fmt.Errorf("authentication failed: access token cookie not found")
 	}
 
-	valid, err := a.apihubClient.CheckApiKeyValid(apiKey)
+	// TODO: check the value before the request?
+
+	success, err := a.apihubClient.CheckAuthToken(ctx, cookie.Value)
 	if err != nil {
 		return nil, err
 	}
-	if valid {
-		return auth.NewDefaultUser("", "api-key", []string{}, auth.Extensions{}), nil
+	if success {
+		return auth.NewDefaultUser("", "", []string{}, auth.Extensions{}), nil
 	} else {
-		return nil, fmt.Errorf("authentication failed: %v is invalid", "api-key")
+		return nil, fmt.Errorf("authentication failed, token from cookie is incorrect")
 	}
 }
