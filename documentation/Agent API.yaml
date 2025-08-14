@@ -53,6 +53,7 @@ paths:
                     items:
                       type: string
                       description: Namespace name
+                    maxItems: 100
                   cloudName:
                     type: string
                     description: Cloud name

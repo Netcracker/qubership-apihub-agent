@@ -5,7 +5,7 @@ qubershipApihubAgent:
 
   image:
     repository: 'ghcr.io/netcracker/qubership-apihub-agent' 
-    tag: 'latest'
+    tag: 'dev'
 
   # Section with resource limits
   # Mandatory
