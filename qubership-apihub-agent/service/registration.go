@@ -28,7 +28,7 @@ type RegistrationService interface {
 	RunAgentRegistrationProcess()
 }
 
-func NewRegistrationService(cloudName string, namespace string, agentUrl string, backendVersion string, agentName string, client client.ApihubClient, disablingService DisablingService) RegistrationService {
+func NewRegistrationService(cloudName string, namespace string, agentUrl string, backendVersion string, agentName string, client client.AgentsBackendClient, disablingService DisablingService) RegistrationService {
 	return &registrationServiceImpl{cloudName: cloudName, namespace: namespace, agentUrl: agentUrl, backendVersion: backendVersion, agentName: agentName, client: client, disablingService: disablingService}
 }
 
@@ -39,7 +39,7 @@ type registrationServiceImpl struct {
 	backendVersion string
 	agentName      string
 
-	client           client.ApihubClient
+	client           client.AgentsBackendClient
 	disablingService DisablingService
 }
 

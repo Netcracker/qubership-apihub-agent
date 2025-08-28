@@ -43,8 +43,6 @@ type ApihubClient interface {
 
 	GetRsaPublicKey(ctx secctx.SecurityContext) (*view.PublicKey, error)
 
-	SendKeepaliveMessage(msg view.AgentKeepaliveMessage) (string, error)
-
 	CheckApiKeyValid(apiKey string) (bool, error)
 	CheckAuthToken(ctx context.Context, token string) (bool, error)
 }
@@ -172,36 +170,6 @@ func (a apihubClientImpl) GetUserPackagesPromoteStatuses(ctx secctx.SecurityCont
 		return nil, err
 	}
 	return result, nil
-}
-
-func (a apihubClientImpl) SendKeepaliveMessage(msg view.AgentKeepaliveMessage) (string, error) {
-	req := a.makeRequest(secctx.CreateSystemContext())
-	req.SetBody(msg)
-
-	resp, err := req.Post(fmt.Sprintf("%s/api/v2/agents", a.apihubUrl))
-	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		if authErr := checkUnauthorized(resp); authErr != nil {
-			return "", authErr
-		}
-		return "", fmt.Errorf("failed to send registration message with error code %d", resp.StatusCode())
-	}
-	body := resp.Body()
-	if len(body) > 0 {
-		type agentVersion struct {
-			Version string `json:"version"`
-		}
-		var version agentVersion
-		err = json.Unmarshal(body, &version)
-		if err != nil {
-			return "", err
-		}
-		return version.Version, nil
-	}
-
-	return "", nil
 }
 
 func (a apihubClientImpl) CheckApiKeyValid(apiKey string) (bool, error) {
