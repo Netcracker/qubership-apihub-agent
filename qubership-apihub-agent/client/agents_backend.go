@@ -12,6 +12,8 @@ import (
 	"gopkg.in/resty.v1"
 )
 
+const AgentsBackendPathPrefix = "/agents-backend"
+
 type AgentsBackendClient interface {
 	SendKeepaliveMessage(msg view.AgentKeepaliveMessage) (string, error)
 }
@@ -29,7 +31,7 @@ func (a agentsBackendClientImpl) SendKeepaliveMessage(msg view.AgentKeepaliveMes
 	req := a.makeRequest(secctx.CreateSystemContext())
 	req.SetBody(msg)
 
-	resp, err := req.Post(fmt.Sprintf("%s/api/v2/agents", a.apihubUrl))
+	resp, err := req.Post(fmt.Sprintf("%s/%s/api/v2/agents", a.apihubUrl, AgentsBackendPathPrefix))
 	if err != nil {
 		return "", err
 	}
