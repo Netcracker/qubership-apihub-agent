@@ -413,12 +413,12 @@ paths:
   /v2/workspaces/{workspaceId}/discover:
     parameters:
       - name: workspaceId
-      in: path
-      description: Workspace unique identifier. Workspace determines scope within which packages are searched by service names.
-      required: true
-      schema:
-        type: string
-      example: NC
+        in: path
+        description: Workspace unique identifier. Workspace determines scope within which packages are searched by service names.
+        required: true
+        schema:
+          type: string
+        example: NC
     post:
       summary: Run discover for whole cloud
       description: |
@@ -511,12 +511,12 @@ paths:
   /v2/workspaces/{workspaceId}/services:
     parameters:
       - name: workspaceId
-      in: path
-      description: Workspace unique identifier. Workspace determines scope within which packages are searched by service names.
-      required: true
-      schema:
-        type: string
-      example: NC
+        in: path
+        description: Workspace unique identifier. Workspace determines scope within which packages are searched by service names.
+        required: true
+        schema:
+          type: string
+        example: NC
     get:
       summary: Get namespaces summary for the whole cloud
       description: |
@@ -776,18 +776,18 @@ components:
             part-of: CloudBSS-CPQBE
             app_name: cpq
         availablePromoteStatuses:
-            description: |
-              List of statuses available to the user to promote the service.
-              The list of statuses is calculated based on the user's permissions.
-            type: array
-            items:
-              type: string
-              enum:
-                - draft
-                - release
-                - release candidate
-                - deprecated
-                - archived
+          description: |
+            List of statuses available to the user to promote the service.
+            The list of statuses is calculated based on the user's permissions.
+          type: array
+          items:
+            type: string
+            enum:
+              - draft
+              - release
+              - release candidate
+              - deprecated
+              - archived
         baseline:
           description: Baseline Package with serviceName equals to id
           type: object
@@ -896,18 +896,18 @@ components:
             part-of: CloudBSS-CPQBE
             app_name: cpq
         availablePromoteStatuses:
-            description: |
-              List of statuses available to the user to promote the service.
-              The list of statuses is calculated based on the user's permissions.
-            type: array
-            items:
-              type: string
-              enum:
-                - draft
-                - release
-                - release candidate
-                - deprecated
-                - archived
+          description: |
+            List of statuses available to the user to promote the service.
+            The list of statuses is calculated based on the user's permissions.
+          type: array
+          items:
+            type: string
+            enum:
+              - draft
+              - release
+              - release candidate
+              - deprecated
+              - archived
         baseline:
           description: Baseline Package with serviceName equals to id
           type: object
