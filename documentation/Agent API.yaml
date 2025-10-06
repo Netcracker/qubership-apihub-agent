@@ -412,7 +412,7 @@ paths:
           $ref: "#/components/responses/serviceUnavailable503"
   /v2/workspaces/{workspaceId}/discover:
     parameters:
-    - name: workspaceId
+      - name: workspaceId
       in: path
       description: Workspace unique identifier. Workspace determines scope within which packages are searched by service names.
       required: true
@@ -510,7 +510,7 @@ paths:
           $ref: "#/components/responses/serviceUnavailable503"
   /v2/workspaces/{workspaceId}/services:
     parameters:
-    - name: workspaceId
+      - name: workspaceId
       in: path
       description: Workspace unique identifier. Workspace determines scope within which packages are searched by service names.
       required: true

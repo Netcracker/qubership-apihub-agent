@@ -1,5 +1,4 @@
 ---
-
 quiet: true
 
 skip-check:
@@ -13,15 +12,15 @@ skip-check:
 - CKV_K8S_43 # Image should use digest
 - CKV2_K8S_5 # No ServiceAccount/Node should be able to read all secrets
 - CKV2_K8S_6 # Minimize the admission of pods which lack an associated NetworkPolicy
-# https://www.checkov.io/5.Policy%20Index/dockerfile.html
+  # https://www.checkov.io/5.Policy%20Index/dockerfile.html
 - CKV_DOCKER_2 # Ensure that HEALTHCHECK instructions have been added to container images
-# https://www.checkov.io/5.Policy%20Index/secrets.html
+  # https://www.checkov.io/5.Policy%20Index/secrets.html
 - CKV_SECRET_6 # Base64 High Entropy String
-# https://www.checkov.io/5.Policy%20Index/github_actions.html
+  # https://www.checkov.io/5.Policy%20Index/github_actions.html
 - CKV2_GHA_1 # Ensure top-level permissions are not set to write-all
 - CKV_GHA_7 # The build output cannot be affected by user parameters other than the build entry point and the top-level source location. GitHub Actions workflow_dispatch inputs MUST be empty.
 - CKV_K8S_29 # Apply security context to your pods and containers
 - CKV_K8S_14 # Image Tag should be fixed - not latest or blank
-- CKV_OPENAPI_21 #Ensure that arrays have a maximum number of items
-- CKV_OPENAPI_4 #Ensure that the global security field has rules defined
+- CKV_OPENAPI_21 # Ensure that arrays have a maximum number of items
+- CKV_OPENAPI_4 # Ensure that the global security field has rules defined
 - CKV_OPENAPI_5 # Ensure that security operations is not empty
