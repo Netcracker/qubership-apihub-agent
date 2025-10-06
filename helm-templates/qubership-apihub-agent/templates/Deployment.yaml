@@ -83,11 +83,11 @@ spec:
               value: '{{ .Values.qubershipApihubAgent.env.discoveryGroupingLabels }}'
           resources:
             requests:
-              cpu: {{  .Values.qubershipApihubAgent.resource.cpu.request  }}
-              memory: {{  .Values.qubershipApihubAgent.resource.memory.request  }}
+              cpu: '{{ .Values.qubershipApihubAgent.resource.cpu.request }}'
+              memory: '{{ .Values.qubershipApihubAgent.resource.memory.request }}'
             limits:
-              cpu: {{  .Values.qubershipApihubAgent.resource.cpu.limit  }}
-              memory: {{  .Values.qubershipApihubAgent.resource.memory.limit  }}
+              cpu: '{{ .Values.qubershipApihubAgent.resource.cpu.limit }}'
+              memory: '{{ .Values.qubershipApihubAgent.resource.memory.limit }}'
           livenessProbe:
             httpGet:
               path: /live
