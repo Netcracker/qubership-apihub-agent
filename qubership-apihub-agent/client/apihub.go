@@ -41,8 +41,9 @@ type ApihubClient interface {
 
 	GetUserPackagesPromoteStatuses(ctx secctx.SecurityContext, packagesReq view.PackagesReq) (view.AvailablePackagePromoteStatuses, error)
 
-	GetRsaPublicKey(ctx secctx.SecurityContext) (*view.PublicKey, error)
+	GetSystemConfiguration() (*view.ApihubSystemConfigurationInfo, error)
 
+	GetRsaPublicKey(ctx secctx.SecurityContext) (*view.PublicKey, error)
 	CheckApiKeyValid(apiKey string) (bool, error)
 	CheckAuthToken(ctx context.Context, token string) (bool, error)
 }
@@ -208,6 +209,23 @@ func (a apihubClientImpl) CheckAuthToken(ctx context.Context, token string) (boo
 		return false, err
 	}
 	return true, nil
+}
+
+func (a apihubClientImpl) GetSystemConfiguration() (*view.ApihubSystemConfigurationInfo, error) {
+	req := a.makeRequest(secctx.CreateSystemContext())
+	resp, err := req.Get(fmt.Sprintf("%s/api/v2/system/configuration", a.apihubUrl))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get APIHUB system configuration: %s", err.Error())
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("failed to get APIHUB system configuration: status code %d", resp.StatusCode())
+	}
+	var config view.ApihubSystemConfigurationInfo
+	err = json.Unmarshal(resp.Body(), &config)
+	if err != nil {
+		return nil, err
+	}
+	return &config, nil
 }
 
 func (a apihubClientImpl) makeRequest(ctx secctx.SecurityContext) *resty.Request {
