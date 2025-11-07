@@ -26,6 +26,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var slugPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
 type SystemInfoService interface {
 	GetSystemInfo() *view.SystemInfo
 	GetBackendVersion() string
@@ -42,34 +44,34 @@ type SystemInfoService interface {
 }
 
 func NewSystemInfoService() (SystemInfoService, error) {
-	cloudName, err := setCloudName()
+	cloudName, err := getCloudName()
 	if err != nil {
 		return nil, fmt.Errorf("invalid CLOUD_NAME: %w", err)
 	}
 
-	agentNamespace, err := setAgentNamespace()
+	agentNamespace, err := getAgentNamespace()
 	if err != nil {
 		return nil, fmt.Errorf("invalid NAMESPACE: %w", err)
 	}
 
-	agentName, err := setAgentName()
+	agentName, err := getAgentName()
 	if err != nil {
 		return nil, fmt.Errorf("invalid AGENT_NAME: %w", err)
 	}
 
 	systemInfo := view.SystemInfo{
-		BackendVersion:   setBackendVersion(),
-		InsecureProxy:    setInsecureProxy(),
-		ApihubUrl:        setApihubUrl(),
-		AgentUrl:         setAgentUrl(),
-		AccessToken:      setAccessToken(),
-		DiscoveryConfig:  setDiscoveryConfig(),
+		BackendVersion:   getBackendVersion(),
+		InsecureProxy:    getInsecureProxy(),
+		ApihubUrl:        getApihubUrl(),
+		AgentUrl:         getAgentUrl(),
+		AccessToken:      getAccessToken(),
+		DiscoveryConfig:  getDiscoveryConfig(),
 		CloudName:        cloudName,
 		AgentNamespace:   agentNamespace,
-		ExcludeLabels:    setExcludeLabels(),
-		GroupingLabels:   setGroupingLabels(),
+		ExcludeLabels:    getExcludeLabels(),
+		GroupingLabels:   getGroupingLabels(),
 		AgentName:        agentName,
-		DiscoveryTimeout: setDiscoveryTimeout(),
+		DiscoveryTimeout: getDiscoveryTimeout(),
 	}
 	return &systemInfoServiceImpl{
 		systemInfo: systemInfo}, nil
@@ -127,7 +129,7 @@ func (g systemInfoServiceImpl) GetDiscoveryTimeout() time.Duration {
 	return g.systemInfo.DiscoveryTimeout
 }
 
-func setInsecureProxy() bool {
+func getInsecureProxy() bool {
 	envVal := os.Getenv("INSECURE_PROXY")
 	if envVal == "" {
 		return false
@@ -139,7 +141,7 @@ func setInsecureProxy() bool {
 	return insecureProxy
 }
 
-func setBackendVersion() string {
+func getBackendVersion() string {
 	version := os.Getenv("ARTIFACT_DESCRIPTOR_VERSION")
 	if version == "" {
 		version = "unknown"
@@ -147,7 +149,7 @@ func setBackendVersion() string {
 	return version
 }
 
-func setApihubUrl() string {
+func getApihubUrl() string {
 	apihubUrl := os.Getenv("APIHUB_URL")
 	if apihubUrl == "" {
 		apihubUrl = "https://qubership.localhost"
@@ -155,19 +157,19 @@ func setApihubUrl() string {
 	return apihubUrl
 }
 
-func setAgentUrl() string {
+func getAgentUrl() string {
 	return os.Getenv("AGENT_URL")
 }
 
-func setAccessToken() string {
+func getAccessToken() string {
 	return os.Getenv("APIHUB_ACCESS_TOKEN")
 }
 
-func setDiscoveryConfig() string {
+func getDiscoveryConfig() string {
 	return os.Getenv("DISCOVERY_CONFIG")
 }
 
-func setCloudName() (string, error) {
+func getCloudName() (string, error) {
 	cloudName := os.Getenv("CLOUD_NAME")
 	if cloudName == "" {
 		cloudName = "unknown"
@@ -178,7 +180,7 @@ func setCloudName() (string, error) {
 	return cloudName, nil
 }
 
-func setAgentNamespace() (string, error) {
+func getAgentNamespace() (string, error) {
 	agentNamespace := os.Getenv("NAMESPACE")
 	if agentNamespace == "" {
 		agentNamespace = "unknown"
@@ -189,7 +191,7 @@ func setAgentNamespace() (string, error) {
 	return agentNamespace, nil
 }
 
-func setExcludeLabels() []string {
+func getExcludeLabels() []string {
 	excludeLablesStr := os.Getenv("DISCOVERY_EXCLUDE_LABELS")
 	if excludeLablesStr == "" {
 		return []string{}
@@ -205,7 +207,7 @@ func setExcludeLabels() []string {
 	return cleanedExcludeLabels
 }
 
-func setGroupingLabels() []string {
+func getGroupingLabels() []string {
 	groupingLablesStr := os.Getenv("DISCOVERY_GROUPING_LABELS")
 	if groupingLablesStr == "" {
 		return []string{}
@@ -221,7 +223,7 @@ func setGroupingLabels() []string {
 	return cleanedGroupingLabels
 }
 
-func setAgentName() (string, error) {
+func getAgentName() (string, error) {
 	agentName := os.Getenv("AGENT_NAME")
 	if agentName != "" {
 		if err := validateSlugOnlyCharacters(agentName); err != nil {
@@ -231,7 +233,7 @@ func setAgentName() (string, error) {
 	return agentName, nil
 }
 
-func setDiscoveryTimeout() time.Duration {
+func getDiscoveryTimeout() time.Duration {
 	discoveryTimeoutSecStr := os.Getenv("DISCOVERY_TIMEOUT_SEC")
 	if discoveryTimeoutSecStr == "" {
 		return time.Second * 15
@@ -248,7 +250,6 @@ func validateSlugOnlyCharacters(value string) error {
 	if value == "" {
 		return fmt.Errorf("value cannot be empty")
 	}
-	slugPattern := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	if !slugPattern.MatchString(value) {
 		return fmt.Errorf("value '%s' contains invalid characters. Can only contain letters, numbers, hyphens and underscores", value)
 	}
