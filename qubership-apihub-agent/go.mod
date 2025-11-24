@@ -1,13 +1,13 @@
 module github.com/Netcracker/qubership-apihub-agent
 
-go 1.25.1
+go 1.25.4
 
 require (
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/netcracker/qubership-core-lib-go-paas-mediation-client/v8 v8.0.3
-	github.com/netcracker/qubership-core-lib-go/v3 v3.1.1
+	github.com/netcracker/qubership-core-lib-go/v3 v3.2.2
 	github.com/shaj13/go-guardian/v2 v2.11.6
 	github.com/shaj13/libcache v1.0.4
 	github.com/sirupsen/logrus v1.9.3
