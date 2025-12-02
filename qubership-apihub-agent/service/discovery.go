@@ -120,7 +120,10 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 	var pods []entity.Pod
 	var podsErr error
 
-	wg.Add(2)
+	var deployments []entity.Deployment
+	var deploymentsErr error
+
+	wg.Add(3)
 
 	utils.SafeAsync(func() {
 		defer wg.Done()
@@ -129,6 +132,10 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 	utils.SafeAsync(func() {
 		defer wg.Done()
 		pods, podsErr = d.paasClient.GetPodList(ctx, namespace, filter.Meta{})
+	})
+	utils.SafeAsync(func() {
+		defer wg.Done()
+		deployments, deploymentsErr = d.paasClient.GetDeploymentList(ctx, namespace, filter.Meta{})
 	})
 
 	wg.Wait()
@@ -145,6 +152,12 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 		return
 	}
 
+	if deploymentsErr != nil {
+		d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusError, podsErr.Error())
+		log.Errorf("Failed to list k8s deployments in namespace %s: %s", namespace, podsErr.Error())
+		return
+	}
+
 	agentId := utils.MakeAgentId(d.cloudName, d.agentNamespace)
 
 	for _, srv := range services {
@@ -154,6 +167,8 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 		log.Infof("Full list of labels for service %s: %+v", srv.Name, labels)
 		annotations := getAllAnnotationsForService(srv)
 		log.Debugf("Full list of annotations for service %s: %+v", srv.Name, annotations)
+		deployment := getDeploymentForService(deployments, srv.Spec.Selector)
+		log.Debugf("Deployment for service %s: %+v", srv.Name, deployment)
 
 		// apply skip list for full list of labels
 		exclude := false
@@ -179,11 +194,17 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 			}
 		}
 
-		if srv.Spec.Type != "ExternalName" && !containerReady {
-			errMsg := fmt.Sprintf("no pod is up yet for service: %s", srv.Name)
-			d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusError, errMsg)
-			log.Error(errMsg)
-			continue
+		if srv.Spec.Type != "ExternalName" { // ExternalName service do not have pods in local namespace, so the following check is not applicable.
+			// Some deployments may be scaled down intentionally, need to check replicas count
+			if deployment != nil && deployment.Spec.Replicas != nil && *deployment.Spec.Replicas > 0 && !containerReady {
+				// We expect the service up and running, but have no live and ready pods.
+				// Looks like the namespace is in deployment/restart phase.
+				// In this case discovery result will not be completely correct, so returning the error.
+				errMsg := fmt.Sprintf("no pod is up yet for service: %s", srv.Name)
+				d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusError, errMsg)
+				log.Error(errMsg)
+				return
+			}
 		}
 
 		discoveryUrls := view.MakeDocDiscoveryUrls(annotations)
@@ -307,6 +328,21 @@ func getPodsForSelector(allPods []entity.Pod, selector map[string]string) []enti
 		}
 	}
 	return result
+}
+
+func getDeploymentForService(allDeployments []entity.Deployment, selector map[string]string) *entity.Deployment {
+	for _, deployment := range allDeployments {
+		matchSelectors := 0
+		for k, v := range selector {
+			if deployment.Labels[k] == v {
+				matchSelectors++
+			}
+		}
+		if matchSelectors == len(selector) {
+			return &deployment
+		}
+	}
+	return nil
 }
 
 func getAllLabelsForService(service entity.Service, pods []entity.Pod) map[string]string {
