@@ -179,7 +179,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 			}
 		}
 
-		if !containerReady {
+		if srv.Spec.Type != "ExternalName" && !containerReady {
 			errMsg := fmt.Sprintf("no pod is up yet for service: %s", srv.Name)
 			d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusError, errMsg)
 			log.Error(errMsg)
