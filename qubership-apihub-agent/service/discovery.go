@@ -37,7 +37,7 @@ import (
 )
 
 type DiscoveryService interface {
-	StartDiscovery(ctx secctx.SecurityContext, namespace string, workspaceId string) error
+	StartDiscovery(ctx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool) error
 	GetServiceUrl(namespace string, serviceId string) (string, error)
 }
 
@@ -85,7 +85,7 @@ type discoveryServiceImpl struct {
 	apihubClient              client.ApihubClient
 }
 
-func (d discoveryServiceImpl) StartDiscovery(ctx secctx.SecurityContext, namespace string, workspaceId string) error {
+func (d discoveryServiceImpl) StartDiscovery(ctx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool) error {
 	exists, err := d.namespaceListCache.NamespaceExists(namespace)
 	if err != nil {
 		return err
@@ -102,12 +102,12 @@ func (d discoveryServiceImpl) StartDiscovery(ctx secctx.SecurityContext, namespa
 
 	d.serviceListCache.handleDiscoveryStart(namespace, workspaceId)
 	utils.SafeAsync(func() {
-		d.runDiscovery(ctx, namespace, workspaceId)
+		d.runDiscovery(ctx, namespace, workspaceId, failOnError)
 	})
 	return nil
 }
 
-func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namespace string, workspaceId string) {
+func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool) {
 	log.Infof("Starting discovery for namespace %s", namespace)
 	start := time.Now()
 	ctx := goctx.Background()
@@ -194,16 +194,18 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 			}
 		}
 
-		if srv.Spec.Type != "ExternalName" { // ExternalName service do not have pods in local namespace, so the following check is not applicable.
-			// Some deployments may be scaled down intentionally, need to check replicas count
-			if deployment != nil && deployment.Spec.Replicas != nil && *deployment.Spec.Replicas > 0 && !containerReady {
-				// We expect the service up and running, but have no live and ready pods.
-				// Looks like the namespace is in deployment/restart phase.
-				// In this case discovery result will not be completely correct, so returning the error.
-				errMsg := fmt.Sprintf("no pod is up yet for service: %s", srv.Name)
-				d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusError, errMsg)
-				log.Error(errMsg)
-				return
+		if failOnError { // invoke service status check if true
+			if srv.Spec.Type != "ExternalName" { // ExternalName service do not have pods in local namespace, so the following check is not applicable.
+				// Some deployments may be scaled down intentionally, need to check replicas count
+				if deployment != nil && deployment.Spec.Replicas != nil && *deployment.Spec.Replicas > 0 && !containerReady {
+					// We expect the service up and running, but have no live and ready pods.
+					// Looks like the namespace is in deployment/restart phase.
+					// In this case discovery result will not be completely correct, so returning the error.
+					errMsg := fmt.Sprintf("no pod is up yet for service: %s", srv.Name)
+					d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusError, errMsg)
+					log.Error(errMsg)
+					return
+				}
 			}
 		}
 
