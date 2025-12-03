@@ -143,18 +143,21 @@ func GetGenericObjectFromUrl(url string, timeout time.Duration) (view.JsonMap, s
 		return nil, "", err
 	}
 	var spec view.JsonMap
-	err = json.Unmarshal(specBytes, &spec)
-	if err == nil {
+	jsonErr := json.Unmarshal(specBytes, &spec)
+	if jsonErr == nil {
 		return spec, view.FormatJson, nil
 	}
 	var body map[interface{}]interface{}
-	if err := yaml.Unmarshal(specBytes, &body); err != nil {
-		return nil, "", err
+	yamlErr := yaml.Unmarshal(specBytes, &body)
+	if yamlErr == nil {
+		spec = view.ConvertYamlToJsonMap(body)
+		if spec != nil {
+			return spec, view.FormatYaml, nil
+		} else {
+			return nil, "", fmt.Errorf("unmarshalled the spec as yaml, but convert to map failed")
+		}
+	} else {
+		// both json and yaml deserializers failed
+		return nil, "", fmt.Errorf("failed to unmarshal spec as json (%s) and yaml(%s)", jsonErr, yamlErr)
 	}
-
-	spec = view.ConvertYamlToJsonMap(body)
-	if spec != nil {
-		return spec, view.FormatYaml, nil
-	}
-	return nil, "", err
 }
