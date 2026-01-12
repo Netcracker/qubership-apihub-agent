@@ -125,6 +125,7 @@ func main() {
 	apiDocsController := controller.NewApiDocsController(basePath)
 	cloudController := controller.NewCloudController(cloudService)
 	routesController := controller.NewRoutesController(routesService)
+	logsController := controller.NewLogsController()
 
 	disablingMiddleware := controller.NewDisabledServicesMiddleware(disablingSerivce)
 	r := mux.NewRouter().SkipClean(true).UseEncodedPath()
@@ -154,6 +155,9 @@ func main() {
 	r.HandleFunc("/api/v2/workspaces/{workspaceId}/services", security.Secure(cloudController.ListAllServices)).Methods(http.MethodGet)
 
 	r.HandleFunc("/v3/api-docs", apiDocsController.GetSpec).Methods(http.MethodGet)
+
+	r.HandleFunc("/api/v1/debug/logs/setLevel", security.Secure(logsController.SetLogLevel)).Methods(http.MethodPost)
+	r.HandleFunc("/api/v1/debug/logs/checkLevel", security.Secure(logsController.CheckLogLevel)).Methods(http.MethodGet)
 
 	healthController := controller.NewHealthController()
 	healthController.AddStartupCheck(func() bool {
