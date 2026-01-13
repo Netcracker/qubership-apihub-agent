@@ -697,13 +697,10 @@ paths:
         "200":
           description: Success
           content:
-            application/json:
+            text/plain:
               schema:
-                type: object
-                properties:
-                  level:
-                    type: string
-                    description: Current log level
+                type: string
+                description: Current log level
         "401":
           description: Unauthorized
           content:
