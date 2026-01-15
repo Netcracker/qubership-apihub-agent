@@ -16,8 +16,7 @@ openapi: 3.0.3
 info:
   title: APIHUB Agent Admin Internal API
   version: 1.0.0
-  description: |
-    Internal Admin API contract for APIHUB agent. Contains administrative operations for cloud-wide discovery and services management.
+  description: Internal-only API contract for system administrators.
 servers:
   - url: "https://{agentUrl}/api"
     description: Agent backend address

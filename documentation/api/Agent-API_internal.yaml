@@ -17,7 +17,7 @@ info:
   title: APIHUB Agent Internal API
   version: 1.0.0
   description: |
-    Internal API contract for APIHUB agent. Contains operations for service discovery and namespace management.
+    Internal API contract for APIHUB agent. Contains operations for service discovery and namespace info retrieval.
 servers:
   - url: "https://{agentUrl}/api"
     description: Agent backend address

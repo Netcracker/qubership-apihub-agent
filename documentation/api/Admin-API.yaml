@@ -16,8 +16,7 @@ openapi: 3.0.3
 info:
   title: APIHUB Agent Admin API
   version: 1.0.0
-  description: |
-    Admin API contract for APIHUB agent. Contains administrative operations for debugging and log management.
+  description: External API contract for system administrators.
 servers:
   - url: "https://{agentUrl}/api"
     description: Agent backend address
