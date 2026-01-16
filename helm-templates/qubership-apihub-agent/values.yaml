@@ -24,7 +24,7 @@ qubershipApihubAgent:
     # Section with technical parameters
     technicalParameters:
       # Optional; APIHUB Agent release version to be shown in UI; If not set, default value: unknown; Example: 1.0.0
-      version: ''
+      version: 'unknown'
       apihub:
         # Mandatory; Factual Qubership APIHUB server URL in your environment.; If not set, default value: http://localhost:8090; Example: https://apihub.example.com
         url: ''
