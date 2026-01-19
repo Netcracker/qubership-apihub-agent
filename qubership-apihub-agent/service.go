@@ -98,7 +98,7 @@ func main() {
 	serviceListCache := service.NewServiceListCache()
 	documentsDiscoveryService := service.NewDocumentsDiscoveryService(systemInfoService.GetDiscoveryTimeout())
 	discoveryService := service.NewDiscoveryService(systemInfoService.GetCloudName(), systemInfoService.GetAgentNamespace(), systemInfoService.GetApihubUrl(), systemInfoService.GetExcludeLabels(), systemInfoService.GetGroupingLabels(), namespaceListCache, serviceListCache,
-		paasCl, documentsDiscoveryService, apihubClient)
+		paasCl, documentsDiscoveryService, apihubClient, systemInfoService.GetDiscoveryUrls())
 	documentService := service.NewDocumentService(serviceListCache, systemInfoService.GetDiscoveryTimeout())
 	regService := service.NewRegistrationService(systemInfoService.GetCloudName(), systemInfoService.GetAgentNamespace(), systemInfoService.GetAgentUrl(),
 		systemInfoService.GetBackendVersion(), systemInfoService.GetAgentName(), apihubClient, agentsBackendClient, disablingSerivce)

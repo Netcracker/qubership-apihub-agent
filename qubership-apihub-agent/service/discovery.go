@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/Netcracker/qubership-apihub-agent/client"
+	"github.com/Netcracker/qubership-apihub-agent/config"
 	"github.com/Netcracker/qubership-apihub-agent/secctx"
 	"github.com/netcracker/qubership-core-lib-go-paas-mediation-client/v8/entity"
 	"github.com/netcracker/qubership-core-lib-go-paas-mediation-client/v8/filter"
@@ -51,7 +52,8 @@ func NewDiscoveryService(
 	serviceListCache ServiceListCache,
 	paasClient service.PlatformService,
 	documentsDiscoveryService DocumentsDiscoveryService,
-	apihubClient client.ApihubClient) DiscoveryService {
+	apihubClient client.ApihubClient,
+	discoveryUrls config.UrlsConfig) DiscoveryService {
 	groupingLabelsMap := make(map[string]struct{}, len(groupingLabels))
 	for _, label := range groupingLabels {
 		groupingLabelsMap[label] = struct{}{}
@@ -67,7 +69,8 @@ func NewDiscoveryService(
 		serviceListCache:          serviceListCache,
 		paasClient:                paasClient,
 		documentsDiscoveryService: documentsDiscoveryService,
-		apihubClient:              apihubClient}
+		apihubClient:              apihubClient,
+		discoveryUrls:             discoveryUrls}
 }
 
 type discoveryServiceImpl struct {
@@ -76,6 +79,7 @@ type discoveryServiceImpl struct {
 	apihubUrl         string
 	excludeWithLabels []string
 	groupingLabels    map[string]struct{}
+	discoveryUrls     config.UrlsConfig
 
 	namespaceListCache NamespaceListCache
 	serviceListCache   ServiceListCache
@@ -209,7 +213,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 			}
 		}
 
-		discoveryUrls := view.MakeDocDiscoveryUrls(annotations)
+		discoveryUrls := view.MakeDocDiscoveryUrls(d.discoveryUrls, annotations)
 
 		srvTmp := srv
 		wg.Add(1)

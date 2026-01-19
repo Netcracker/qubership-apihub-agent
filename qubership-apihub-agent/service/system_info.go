@@ -41,6 +41,7 @@ type SystemInfoService interface {
 	InsecureProxyEnabled() bool //TODO: remove this after deprecated proxy path is removed
 	GetBasePath() string
 	GetPaasPlatform() string
+	GetDiscoveryUrls() config.UrlsConfig
 }
 
 func NewSystemInfoService() (SystemInfoService, error) {
@@ -76,6 +77,13 @@ func setDefaults() {
 	viper.SetDefault("discovery.excludeLabels", []string{})
 	viper.SetDefault("discovery.groupingLabels", []string{})
 	viper.SetDefault("discovery.timeoutSec", 15)
+	//TODO: what are defaults for discovery URLs ?
+	viper.SetDefault("discovery.urls.openapi.config-urls", []string{"/v3/api-docs/swagger-config", "/swagger-resources"})
+	viper.SetDefault("discovery.urls.openapi.doc-urls", []string{"/q/openapi?format=json", "/v3/api-docs?format=json"})
+	viper.SetDefault("discovery.urls.graphql.config-urls", []string{"/api/graphql-server/schema/domains"})
+	viper.SetDefault("discovery.urls.graphql.doc-urls", []string{"/api/graphql-server/schema", "/graphql", "/graphql/introspection"})
+	viper.SetDefault("discovery.urls.apihub-config.config-urls", []string{"/v3/api-docs/apihub-swagger-config"})
+	viper.SetDefault("discovery.urls.smartplug.config-urls", []string{"/smartplug/v1/api/config"})
 }
 
 func getConfigFolder() string {
@@ -141,6 +149,10 @@ func (g systemInfoServiceImpl) GetBasePath() string {
 
 func (g systemInfoServiceImpl) GetPaasPlatform() string {
 	return g.config.TechnicalParameters.PaasPlatform
+}
+
+func (g systemInfoServiceImpl) GetDiscoveryUrls() config.UrlsConfig {
+	return g.config.Discovery.Urls
 }
 
 func PrintConfig(config interface{}) {

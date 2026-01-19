@@ -2,7 +2,7 @@
 technicalParameters:
   # Optional; Base path for binary and static files, default value: .; Example: /tmp
   basePath: '.'
-  # Mandatory; Listen address for APIHUB agent, can be used to avoid port conflicts in case of run on bare metall; If not set, default value: :8080; Example: :8080
+  # Optional; Listen address for APIHUB agent, can be used to avoid port conflicts in case of run on bare metall; If not set, default value: :8080; Example: :8080
   listenAddress: ':8080'
   # Optional; APIHUB Agent release version to be shown in UI; If not set, default value: unknown; Example: 1.0.0
   version: ''
@@ -19,7 +19,7 @@ technicalParameters:
   namespace: ''
   # Mandatory; Display name of Qubership APIHUB Agent's instance; If not set, default value: ""; Example: apihub-agent-1
   agentName: ''
-  # Mandatory; Platform type for paas-mediation client initialization. Determines which Kubernetes API client to use; If not set, default value: KUBERNETES; Example: OPENSHIFT
+  # Optional; Platform type for paas-mediation client initialization. Determines which Kubernetes API client to use; If not set, default value: KUBERNETES; Example: OPENSHIFT
   paasPlatform: 'KUBERNETES'
 
 # Section with all security parameters
@@ -41,3 +41,25 @@ discovery:
     - application
   # Optional; Timeout for getting API spec files from service in k8s cluster; If not set, default value: 15; Example: 30
   timeoutSec: 15
+  # Optional; URLs for API specification discovery.
+  urls:
+    openapi:
+      config-urls:
+        - /v3/api-docs/swagger-config
+        - /swagger-resources
+      doc-urls:
+        - /q/openapi?format=json
+        - /v3/api-docs?format=json
+    graphql:
+      config-urls:
+        - /api/graphql-server/schema/domains
+      doc-urls:
+        - /api/graphql-server/schema
+        - /graphql
+        - /graphql/introspection
+    apihub-config:
+      config-urls:
+        - /v3/api-docs/apihub-swagger-config
+    smartplug:
+      config-urls:
+        - /smartplug/v1/api/config
