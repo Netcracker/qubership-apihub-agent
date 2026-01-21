@@ -53,7 +53,7 @@ func NewDiscoveryService(
 	paasClient service.PlatformService,
 	documentsDiscoveryService DocumentsDiscoveryService,
 	apihubClient client.ApihubClient,
-	discoveryUrls config.UrlsConfig) DiscoveryService {
+	discoveryUrls config.ApiTypeUrlsConfig) DiscoveryService {
 	groupingLabelsMap := make(map[string]struct{}, len(groupingLabels))
 	for _, label := range groupingLabels {
 		groupingLabelsMap[label] = struct{}{}
@@ -79,7 +79,7 @@ type discoveryServiceImpl struct {
 	apihubUrl         string
 	excludeWithLabels []string
 	groupingLabels    map[string]struct{}
-	discoveryUrls     config.UrlsConfig
+	discoveryUrls     config.ApiTypeUrlsConfig
 
 	namespaceListCache NamespaceListCache
 	serviceListCache   ServiceListCache

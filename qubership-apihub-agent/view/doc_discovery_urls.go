@@ -37,19 +37,18 @@ type DocumentDiscoveryUrls struct {
 	GraphqlSchema        []string
 	GraphqlIntrospection []string
 
-	SmartplugConfig []string
+	AsyncAPI []string
 }
 
-func MakeDocDiscoveryUrls(baseUrls config.UrlsConfig, annotations map[string]string) DocumentDiscoveryUrls {
-	//TODO: may be some custom annotation for smartplug url?
+func MakeDocDiscoveryUrls(baseUrls config.ApiTypeUrlsConfig, annotations map[string]string) DocumentDiscoveryUrls {
 	return DocumentDiscoveryUrls{
 		ApihubConfig:         copyWithPrepend(baseUrls.ApihubConfig.ConfigUrls, annotations[CustomK8sApihubConfigUrl]),
-		SwaggerConfig:        copyWithPrepend(baseUrls.Openapi.ConfigUrls, annotations[CustomK8sSwaggerConfigUrl]),
-		Openapi:              copyWithPrepend(baseUrls.Openapi.DocUrls, annotations[CustomK8sOpenapiUrl]),
-		GraphqlConfig:        copyWithPrepend(baseUrls.Graphql.ConfigUrls, annotations[CustomK8sGraphqlConfigUrl]),
-		GraphqlSchema:        copyWithPrepend(baseUrls.Graphql.DocUrls, annotations[CustomK8sGraphqlUrl]),
+		SwaggerConfig:        copyWithPrepend(baseUrls.OpenAPI.ConfigUrls, annotations[CustomK8sSwaggerConfigUrl]),
+		Openapi:              copyWithPrepend(baseUrls.OpenAPI.DocUrls, annotations[CustomK8sOpenapiUrl]),
+		GraphqlConfig:        copyWithPrepend(baseUrls.GraphQL.ConfigUrls, annotations[CustomK8sGraphqlConfigUrl]),
+		GraphqlSchema:        copyWithPrepend(baseUrls.GraphQL.DocUrls, annotations[CustomK8sGraphqlUrl]),
 		GraphqlIntrospection: copyWithPrepend(nil, annotations[CustomK8sGraphqlIntUrl]),
-		SmartplugConfig:      copyWithPrepend(baseUrls.Smartplug.ConfigUrls, ""),
+		AsyncAPI:             copyWithPrepend(baseUrls.AsyncAPI.DocUrls, ""),
 	}
 }
 

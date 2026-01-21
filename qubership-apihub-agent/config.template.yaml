@@ -43,23 +43,23 @@ discovery:
   timeoutSec: 15
   # Optional; URLs for API specification discovery.
   urls:
+    # OpenAPI discovery configuration. Supports both config-urls (for retrieving configuration with multiple API doc endpoints) and doc-urls (for direct API specification endpoints). If not set, default config-urls: [/v3/api-docs/swagger-config, /swagger-resources]; default doc-urls: [/q/openapi?format=json, /v3/api-docs?format=json, /v2/api-docs, /swagger-ui/swagger.json]
     openapi:
       config-urls:
         - /v3/api-docs/swagger-config
-        - /swagger-resources
       doc-urls:
-        - /q/openapi?format=json
-        - /v3/api-docs?format=json
+        - /v3/api-docs
+    # GraphQL discovery configuration. Supports both config-urls (for retrieving configuration with multiple schema endpoints) and doc-urls (for direct GraphQL schema endpoints). If not set, default value: []
     graphql:
       config-urls:
         - /api/graphql-server/schema/domains
       doc-urls:
         - /api/graphql-server/schema
-        - /graphql
-        - /graphql/introspection
+    # APIHUB configuration discovery. Supports only config-urls (for retrieving APIHUB-specific configuration endpoints). If not set, default value: [/v3/api-docs/apihub-swagger-config]
     apihub-config:
       config-urls:
         - /v3/api-docs/apihub-swagger-config
-    smartplug:
-      config-urls:
-        - /smartplug/v1/api/config
+    # AsyncAPI discovery configuration. Supports only doc-urls (for direct AsyncAPI specification endpoints). If not set, default value: []
+    asyncapi:
+      doc-urls:
+        - /v3/api-docs/asyncapi

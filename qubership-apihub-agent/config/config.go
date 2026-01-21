@@ -32,17 +32,25 @@ type DiscoveryConfig struct {
 	ExcludeLabels  []string
 	GroupingLabels []string
 	TimeoutSec     int
-	Urls           UrlsConfig
-}
-
-type UrlsConfig struct {
-	Openapi      ApiTypeUrlsConfig
-	Graphql      ApiTypeUrlsConfig
-	ApihubConfig ApiTypeUrlsConfig `mapstructure:"apihub-config"`
-	Smartplug    ApiTypeUrlsConfig
+	Urls           ApiTypeUrlsConfig
 }
 
 type ApiTypeUrlsConfig struct {
-	ConfigUrls []string `mapstructure:"config-urls"`
+	OpenAPI      UrlsConfig           `mapstructure:"openapi"`
+	GraphQL      UrlsConfig           `mapstructure:"graphql"`
+	ApihubConfig ConfigOnlyUrlsConfig `mapstructure:"apihub-config"`
+	AsyncAPI     DocOnlyUrlsConfig    `mapstructure:"asyncapi"`
+}
+
+type UrlsConfig struct {
 	DocUrls    []string `mapstructure:"doc-urls"`
+	ConfigUrls []string `mapstructure:"config-urls"`
+}
+
+type DocOnlyUrlsConfig struct {
+	DocUrls []string `mapstructure:"doc-urls"`
+}
+
+type ConfigOnlyUrlsConfig struct {
+	ConfigUrls []string `mapstructure:"config-urls"`
 }
