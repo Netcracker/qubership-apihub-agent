@@ -18,7 +18,7 @@ const (
 	OpenAPI31Type     string = "openapi-3-1"
 	OpenAPI30Type     string = "openapi-3-0"
 	OpenAPI20Type     string = "openapi-2-0"
-	AsyncAPIType      string = "asyncapi-2"
+	AsyncAPI30Type    string = "asyncapi-3-0"
 	JsonSchemaType    string = "json-schema"
 	MDType            string = "markdown"
 	GraphQLSchemaType string = "graphql-schema"
@@ -30,7 +30,7 @@ const (
 
 func ValidDocumentType(documentType string) bool {
 	switch documentType {
-	case OpenAPI31Type, OpenAPI30Type, OpenAPI20Type, AsyncAPIType, JsonSchemaType, MDType, GraphQLSchemaType, GraphAPIType, IntrospectionType, GraphQLType, UnknownType:
+	case OpenAPI31Type, OpenAPI30Type, OpenAPI20Type, AsyncAPI30Type, JsonSchemaType, MDType, GraphQLSchemaType, GraphAPIType, IntrospectionType, GraphQLType, UnknownType:
 		return true
 	}
 	return false
@@ -46,6 +46,8 @@ func DocTypeToApiType(documentType string) ApiType {
 		return ATMarkdown
 	case JsonSchemaType:
 		return ATJsonSchema
+	case AsyncAPI30Type:
+		return ATAsyncAPI
 	default:
 		return ATUnknown
 	}

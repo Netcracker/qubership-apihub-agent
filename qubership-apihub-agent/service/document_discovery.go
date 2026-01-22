@@ -21,12 +21,12 @@ import (
 
 	"time"
 
+	"github.com/Netcracker/qubership-apihub-agent/api_type/asyncapi"
 	"github.com/Netcracker/qubership-apihub-agent/api_type/generic"
 	"github.com/Netcracker/qubership-apihub-agent/api_type/graphql"
 	"github.com/Netcracker/qubership-apihub-agent/api_type/json_schema"
 	"github.com/Netcracker/qubership-apihub-agent/api_type/markdown"
 	"github.com/Netcracker/qubership-apihub-agent/api_type/rest"
-	"github.com/Netcracker/qubership-apihub-agent/api_type/smartplug"
 	"github.com/Netcracker/qubership-apihub-agent/api_type/unknown"
 	"github.com/Netcracker/qubership-apihub-agent/utils"
 	"github.com/Netcracker/qubership-apihub-agent/view"
@@ -52,7 +52,7 @@ func NewDocumentsDiscoveryService(discoveryTimeout time.Duration) DocumentsDisco
 			markdown.NewMarkdownDiscoveryRunner(),
 			unknown.NewUnknownDiscoveryRunner(),
 			json_schema.NewJsonSchemaDiscoveryRunner(),
-			smartplug.NewSmartplugDiscoveryRunner(),
+			asyncapi.NewAsyncAPIDiscoveryRunner(),
 		},
 		discoveryTimeout: discoveryTimeout,
 	}
