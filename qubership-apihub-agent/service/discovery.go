@@ -172,14 +172,27 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 
 		// apply skip list for full list of labels
 		exclude := false
+		var excludeLabel string
 		for _, label := range d.excludeWithLabels {
 			if _, ok := labels[label]; ok {
 				log.Infof("Service %s is excluded from discovery", srv.Name)
 				exclude = true
+				excludeLabel = label
 				break
 			}
 		}
 		if exclude {
+			// Track skipped service with diagnostic info
+			d.serviceListCache.addService(namespace, workspaceId, view.Service{
+				Id:        srv.Name,
+				Name:      getServiceName(srv.Name, annotations),
+				Url:       buildBaseurl(srv),
+				Documents: []view.Document{},
+				Diagnostic: &view.ServiceDiagnostic{
+					Skipped:    true,
+					SkipReason: fmt.Sprintf("Service has excluded label: %s", excludeLabel),
+				},
+			})
 			continue
 		}
 
@@ -219,7 +232,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 			serviceName := getServiceName(serviceId, annotations)
 			baseUrl := buildBaseurl(srvTmp)
 
-			var documents []view.Document
+			var discoveryResult *view.DiscoveryResult
 			var docErr error
 
 			// search for documents and for baseline in parallel
@@ -229,7 +242,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 			utils.SafeAsync(func() {
 				defer srvWg.Done()
 
-				documents, docErr = d.documentsDiscoveryService.RetrieveDocuments(baseUrl, serviceName, discoveryUrls)
+				discoveryResult, docErr = d.documentsDiscoveryService.RetrieveDocuments(baseUrl, serviceName, discoveryUrls)
 				if docErr != nil {
 					log.Errorf("Service %s have errors during discovery: %s", serviceName, docErr)
 				}
@@ -290,6 +303,18 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 				errorStr = docErr.Error()
 			}
 
+			// Build diagnostic info - only include failed calls if no specs found
+			var diagnostic *view.ServiceDiagnostic
+			documents := []view.Document{}
+			if discoveryResult != nil {
+				documents = discoveryResult.Documents
+				if len(discoveryResult.Documents) == 0 && len(discoveryResult.EndpointCalls) > 0 {
+					diagnostic = &view.ServiceDiagnostic{
+						EndpointCalls: discoveryResult.EndpointCalls,
+					}
+				}
+			}
+
 			srvToAdd := view.Service{
 				Id:             serviceId,
 				Name:           serviceName,
@@ -299,6 +324,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 				Labels:         labelsToAdd,
 				ProxyServerUrl: utils.MakeCustomProxyPath(agentId, namespace, serviceId),
 				Error:          errorStr,
+				Diagnostic:     diagnostic,
 			}
 			d.serviceListCache.addService(namespace, workspaceId, srvToAdd)
 			wg.Done()

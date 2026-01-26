@@ -25,6 +25,7 @@ import (
 )
 
 type ServiceController interface {
+	ListServices_deprecated(w http.ResponseWriter, r *http.Request)
 	ListServices(w http.ResponseWriter, r *http.Request)
 	StartDiscovery(w http.ResponseWriter, r *http.Request)
 	ListServiceNames(w http.ResponseWriter, r *http.Request)
@@ -47,10 +48,20 @@ type serviceControllerImpl struct {
 	listService      service.ListService
 }
 
-func (s serviceControllerImpl) ListServices(w http.ResponseWriter, r *http.Request) {
+func (s serviceControllerImpl) ListServices_deprecated(w http.ResponseWriter, r *http.Request) {
 	namespace := getStringParam(r, "name")
 	workspaceId := getStringParam(r, "workspaceId")
 	//v1 support
+	if workspaceId == "" {
+		workspaceId = view.DefaultWorkspaceId
+	}
+	services, status, details := s.serviceListCache.GetServicesList_deprecated(namespace, workspaceId)
+	respondWithJson(w, http.StatusOK, view.ServiceListResponse_deprecated{Services: services, Status: status, Debug: details})
+}
+
+func (s serviceControllerImpl) ListServices(w http.ResponseWriter, r *http.Request) {
+	namespace := getStringParam(r, "name")
+	workspaceId := getStringParam(r, "workspaceId")
 	if workspaceId == "" {
 		workspaceId = view.DefaultWorkspaceId
 	}

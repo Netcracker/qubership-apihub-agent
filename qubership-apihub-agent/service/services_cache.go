@@ -24,6 +24,7 @@ import (
 )
 
 type ServiceListCache interface {
+	GetServicesList_deprecated(namespace string, workspaceId string) ([]view.Service_deprecated, view.StatusEnum, string)
 	GetServicesList(namespace string, workspaceId string) ([]view.Service, view.StatusEnum, string)
 	handleDiscoveryStart(namespace string, workspaceId string)
 	addService(namespace string, workspaceId string, service view.Service)
@@ -43,6 +44,26 @@ type serviceListCacheImpl struct {
 	status sync.Map // TODO: replace with regular map
 	// details per namespace+workspace
 	details map[string]string
+}
+
+func (s *serviceListCacheImpl) GetServicesList_deprecated(namespace string, workspaceId string) ([]view.Service_deprecated, view.StatusEnum, string) {
+	s.cacheMutex.RLock()
+	defer s.cacheMutex.RUnlock()
+	id := getNamespaceWithWorkspaceId(namespace, workspaceId)
+
+	val, exists := s.cache.Load(id)
+	if !exists {
+		return make([]view.Service_deprecated, 0), view.StatusNone, ""
+	}
+	sVal, _ := s.status.Load(id)
+
+	servicesWithDiag := val.([]view.Service)
+	services := make([]view.Service_deprecated, len(servicesWithDiag))
+	for i, swd := range servicesWithDiag {
+		services[i] = swd.ToDeprecated()
+	}
+
+	return services, sVal.(view.StatusEnum), s.details[id]
 }
 
 func (s *serviceListCacheImpl) GetServicesList(namespace string, workspaceId string) ([]view.Service, view.StatusEnum, string) {
