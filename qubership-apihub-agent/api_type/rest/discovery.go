@@ -17,6 +17,7 @@ package rest
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"sync"
 	"time"
 
@@ -144,7 +145,7 @@ func getSpecVersionAndTitleFromDoc(specUrl string, relativePath string, timeout 
 	if err != nil {
 		var statusCode int
 		if customError, ok := err.(*exception.CustomError); ok {
-			statusCode = customError.Params["code"].(int)
+			statusCode, _ = strconv.Atoi(customError.Params["code"].(string))
 		}
 		return "", "", "", &view.EndpointCallInfo{
 			Path:         relativePath,

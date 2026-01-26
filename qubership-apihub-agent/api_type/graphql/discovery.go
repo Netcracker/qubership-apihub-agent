@@ -16,8 +16,10 @@ package graphql
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"sync"
 	"time"
 
@@ -77,7 +79,7 @@ func (r graphqlDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.D
 
 	result := make([]view.Document, len(filteredRefs))
 	callResults := make([]view.EndpointCallInfo, len(filteredRefs))
-	errors := make([]string, len(filteredRefs))
+	errs := make([]string, len(filteredRefs))
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(filteredRefs))
@@ -103,12 +105,18 @@ func (r graphqlDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.D
 				err := checkGraphqlSpec(url, ref.Timeout)
 				if err != nil {
 					log.Debugf("Failed to read graphql spec from %v: %v", url, err.Error())
+					var customErr *exception.CustomError
+					var statusCode int
+					if errors.As(err, &customErr) {
+						statusCode, _ = strconv.Atoi(customErr.Params["code"].(string))
+					}
 					callResults[i] = view.EndpointCallInfo{
 						Path:         currentSpecUrl,
+						StatusCode:   statusCode,
 						ErrorSummary: err.Error(),
 					}
 					if ref.Required {
-						errors[i] = fmt.Sprintf("Failed to read required graphql spec from %s: %s", url, err)
+						errs[i] = fmt.Sprintf("Failed to read required graphql spec from %s: %s", url, err)
 					}
 					return
 				} else {
@@ -144,7 +152,7 @@ func (r graphqlDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.D
 
 	wg.Wait()
 
-	return utils.FilterResultDocuments(result), utils.FilterEndpointCallResults(callResults), utils.FilterResultErrors(errors)
+	return utils.FilterResultDocuments(result), utils.FilterEndpointCallResults(callResults), utils.FilterResultErrors(errs)
 }
 
 func (r graphqlDiscoveryRunner) FilterRefsForApiType(refs []view.DocumentRef) []view.DocumentRef {
@@ -194,7 +202,7 @@ func checkGraphqlIntrospection(specUrl string, timeout time.Duration) error {
 func checkGraphqlSpec(specUrl string, timeout time.Duration) error {
 	spec, err := getGraphqlSpecFromUrl(specUrl, timeout)
 	if err != nil {
-		return fmt.Errorf("failed to get graphql specification from '%v': %v", specUrl, err.Error())
+		return fmt.Errorf("failed to get graphql specification from '%v': %w", specUrl, err)
 	}
 	if spec != nil {
 		match, err := regexp.Match("type\\s+?\\S+?\\s+?{", spec)
@@ -221,7 +229,7 @@ func getRefsFromGraphqlConfig(baseUrl string, graphqlConfigUrl string, timeout t
 		log.Debugf("Failed to read json spec from %v: %v", baseUrl+graphqlConfigUrl, err.Error())
 		var statusCode int
 		if customError, ok := err.(*exception.CustomError); ok {
-			statusCode = customError.Params["code"].(int)
+			statusCode, _ = strconv.Atoi(customError.Params["code"].(string))
 		}
 		return nil, &view.EndpointCallInfo{
 			Path:         graphqlConfigUrl,

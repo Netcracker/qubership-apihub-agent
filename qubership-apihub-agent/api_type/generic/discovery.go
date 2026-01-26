@@ -17,6 +17,7 @@ package generic
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -49,7 +50,7 @@ func GetRefsFromConfig(baseUrl string, configUrl string, timeout time.Duration) 
 		log.Debugf("Failed to read spec from %v: %v", baseUrl+configUrl, err.Error())
 		var statusCode int
 		if customError, ok := err.(*exception.CustomError); ok {
-			statusCode = customError.Params["code"].(int)
+			statusCode, _ = strconv.Atoi(customError.Params["code"].(string))
 		}
 		return nil, &view.EndpointCallInfo{
 			Path:         configUrl,
@@ -129,7 +130,7 @@ func GetAnyDocsByRefs(baseUrl string, refs []view.DocumentRef, configPath string
 				log.Debugf("Failed to get document from url %s: %s", fullUrl, err)
 				var statusCode int
 				if customError, ok := err.(*exception.CustomError); ok {
-					statusCode = customError.Params["code"].(int)
+					statusCode, _ = strconv.Atoi(customError.Params["code"].(string))
 				}
 				callResults[i] = view.EndpointCallInfo{
 					Path:         url,
