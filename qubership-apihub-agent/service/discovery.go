@@ -172,27 +172,14 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 
 		// apply skip list for full list of labels
 		exclude := false
-		var excludeLabel string
 		for _, label := range d.excludeWithLabels {
 			if _, ok := labels[label]; ok {
 				log.Infof("Service %s is excluded from discovery", srv.Name)
 				exclude = true
-				excludeLabel = label
 				break
 			}
 		}
 		if exclude {
-			// Track skipped service with diagnostic info
-			d.serviceListCache.addService(namespace, workspaceId, view.Service{
-				Id:        srv.Name,
-				Name:      getServiceName(srv.Name, annotations),
-				Url:       buildBaseurl(srv),
-				Documents: []view.Document{},
-				Diagnostic: &view.ServiceDiagnostic{
-					Skipped:    true,
-					SkipReason: fmt.Sprintf("Service has excluded label: %s", excludeLabel),
-				},
-			})
 			continue
 		}
 
@@ -324,7 +311,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 				Labels:         labelsToAdd,
 				ProxyServerUrl: utils.MakeCustomProxyPath(agentId, namespace, serviceId),
 				Error:          errorStr,
-				Diagnostic:     diagnostic,
+				DiagnosticInfo: diagnostic,
 			}
 			d.serviceListCache.addService(namespace, workspaceId, srvToAdd)
 			wg.Done()

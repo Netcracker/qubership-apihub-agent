@@ -895,7 +895,7 @@ components:
               type: array
               items:
                 type: string
-        docs:
+        documents:
           description: List of the service's API documents, found on environment.
           type: array
           items:
@@ -907,7 +907,7 @@ components:
         error:
           type: string
           description: Discovery error(s)
-        diagnostic:
+        diagnosticInfo:
           $ref: "#/components/schemas/ServiceDiagnostic"
     DocumentV3:
       description: Service API document
@@ -947,18 +947,12 @@ components:
       type: object
       properties:
         endpointCalls:
-          description: List of endpoint discovery attempts
+          description: List of endpoint calls made during discovery
           type: array
           items:
             $ref: "#/components/schemas/EndpointCallInfo"
-        skipped:
-          type: boolean
-          description: Whether service was skipped during discovery
-        skipReason:
-          type: string
-          description: Reason for skipping the service
     EndpointCallInfo:
-      description: Information about a discovery endpoint call attempt
+      description: Information about a document/config endpoint call attempt during discovery
       type: object
       properties:
         path:

@@ -22,8 +22,6 @@ type EndpointCallInfo struct {
 
 type ServiceDiagnostic struct {
 	EndpointCalls []EndpointCallInfo `json:"endpointCalls,omitempty"` // Failed discovery attempts
-	Skipped       bool               `json:"skipped,omitempty"`       // Whether service was skipped
-	SkipReason    string             `json:"skipReason,omitempty"`    // Reason for skipping
 }
 
 type DiscoveryResult struct {
