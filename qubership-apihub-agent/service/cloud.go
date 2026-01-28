@@ -122,7 +122,7 @@ func (c *cloudServiceImpl) waitForNamespace(ns string, workspaceId string) {
 		select {
 		case <-ticker.C:
 			log.Debugf("waitForNamespace %s check", ns)
-			_, status, details := c.serviceListCache.GetServicesList_deprecated(ns, workspaceId)
+			_, status, details := c.serviceListCache.GetServicesList(ns, workspaceId)
 			if status == view.StatusRunning || status == view.StatusNone {
 				log.Debugf("waitForNamespace %s running", ns)
 				continue
@@ -166,8 +166,12 @@ func (c *cloudServiceImpl) GetAllServicesList_deprecated(workspaceId string) vie
 	}
 	namespacesData := map[string]view.ServiceListResponse_deprecated{}
 	for _, ns := range namespaces {
-		services, status, details := c.serviceListCache.GetServicesList_deprecated(ns, workspaceId)
-		namespacesData[ns] = view.ServiceListResponse_deprecated{Services: services, Status: status, Debug: details}
+		services, status, details := c.serviceListCache.GetServicesList(ns, workspaceId)
+		servicesDeprecated := make([]view.Service_deprecated, len(services))
+		for i, svc := range services {
+			servicesDeprecated[i] = svc.ToDeprecated()
+		}
+		namespacesData[ns] = view.ServiceListResponse_deprecated{Services: servicesDeprecated, Status: status, Debug: details}
 	}
 	result.NamespaceData = namespacesData
 
