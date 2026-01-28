@@ -55,7 +55,7 @@ func GetRefsFromConfig(baseUrl string, configUrl string, timeout time.Duration) 
 		return nil, &view.EndpointCallInfo{
 			Path:         configUrl,
 			StatusCode:   statusCode,
-			ErrorSummary: fmt.Sprintf("Failed to read config: %s", err.Error()),
+			ErrorSummary: fmt.Sprintf("Failed to get config: %s", err.Error()),
 		}
 	}
 	// single url case

@@ -67,12 +67,10 @@ type documentsDiscoveryServiceImpl struct {
 func (d documentsDiscoveryServiceImpl) RetrieveDocuments(baseUrl string, serviceName string, urls view.DocumentDiscoveryUrls) (*view.DiscoveryResult, error) {
 	// check apihub config first
 	var refsFromApihubConfig []view.DocumentRef
-	var apihubConfigPath string
 
 	apihubConfig, configPath, apihubConfigCallResults := getApihubConfigFromUrls(baseUrl, urls.ApihubConfig, d.discoveryTimeout)
 	if apihubConfig != nil {
 		refsFromApihubConfig = getDocumentRefsFromApihubConfig(apihubConfig, d.discoveryTimeout*3) // We know that this endpoint should contain the spec, so it's not a guess, increase timeout
-		apihubConfigPath = configPath
 	}
 
 	// process each supported type in parallel
@@ -96,7 +94,7 @@ func (d documentsDiscoveryServiceImpl) RetrieveDocuments(baseUrl string, service
 			var err error
 
 			if len(refsFromApihubConfig) > 0 {
-				docs, callResults, err = runner.GetDocumentsByRefs(baseUrl, refsFromApihubConfig, apihubConfigPath) // just get documents from known urls
+				docs, callResults, err = runner.GetDocumentsByRefs(baseUrl, refsFromApihubConfig, configPath) // just get documents from known urls
 			} else {
 				docs, callResults, err = runner.DiscoverDocuments(baseUrl, urls, d.discoveryTimeout)
 			}

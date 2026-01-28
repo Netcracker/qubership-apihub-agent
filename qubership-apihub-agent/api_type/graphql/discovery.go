@@ -234,7 +234,7 @@ func getRefsFromGraphqlConfig(baseUrl string, graphqlConfigUrl string, timeout t
 		return nil, &view.EndpointCallInfo{
 			Path:         graphqlConfigUrl,
 			StatusCode:   statusCode,
-			ErrorSummary: fmt.Sprintf("Failed to read GraphQL config: %s", err.Error()),
+			ErrorSummary: fmt.Sprintf("Failed to get GraphQL config: %s", err.Error()),
 		}
 	}
 	// single url case
