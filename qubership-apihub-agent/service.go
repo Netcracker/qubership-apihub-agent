@@ -106,8 +106,8 @@ func main() {
 	agentsBackendClient := client.NewAgentsBackendClient(systemInfoService.GetApihubUrl(), systemInfoService.GetAccessToken())
 
 	disablingSerivce := service.NewDisablingService()
-	namespaceListCache := service.NewNamespaceListCache(systemInfoService.GetCloudName(), paasCl)
-	serviceListCache := service.NewServiceListCache()
+	namespaceListCache := service.NewNamespaceListCache(systemInfoService.GetCloudName(), paasCl, systemInfoService.GetNamespacesCacheTTL())
+	serviceListCache := service.NewServiceListCache(systemInfoService.GetServicesCacheTTL())
 	documentsDiscoveryService := service.NewDocumentsDiscoveryService(systemInfoService.GetDiscoveryTimeout())
 	discoveryService := service.NewDiscoveryService(systemInfoService.GetCloudName(), systemInfoService.GetAgentNamespace(), systemInfoService.GetApihubUrl(), systemInfoService.GetExcludeLabels(), systemInfoService.GetGroupingLabels(), namespaceListCache, serviceListCache,
 		paasCl, documentsDiscoveryService, apihubClient)
