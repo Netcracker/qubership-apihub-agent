@@ -1,7 +1,7 @@
 qubershipApihubAgent:
   version: 'dev'
   image:
-    repository: 'localhost/netcracker/qubership-apihub-agent'
+    repository: 'ghcr.io/netcracker/qubership-apihub-agent'
     tag: 'dev'
   replicas: 1
 
