@@ -61,7 +61,7 @@ func FilterResultDocuments(documents []view.Document) []view.Document {
 	return result
 }
 
-func FilterEndpointCallResults(calls []view.EndpointCallInfo) []view.EndpointCallInfo {
+func FilterFailedEndpointCalls(calls []view.EndpointCallInfo) []view.EndpointCallInfo {
 	result := make([]view.EndpointCallInfo, 0)
 	for _, call := range calls {
 		if call.Path != "" {

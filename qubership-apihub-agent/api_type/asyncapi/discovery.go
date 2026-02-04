@@ -51,7 +51,7 @@ func (r asyncAPIDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.
 	}
 
 	result := make([]view.Document, len(filteredRefs))
-	callResults := make([]view.EndpointCallInfo, len(filteredRefs))
+	failedCalls := make([]view.EndpointCallInfo, len(filteredRefs))
 	errors := make([]string, len(filteredRefs))
 
 	wg := sync.WaitGroup{}
@@ -69,12 +69,12 @@ func (r asyncAPIDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.
 
 			url := baseUrl + currentSpecUrl
 
-			specVersion, specTitle, specFormat, callResult := getAsyncAPISpecInfo(url, currentSpecUrl, ref.Timeout)
-			if callResult != nil {
-				log.Debugf("Failed to read asyncapi spec from %s: %s", url, callResult.ErrorSummary)
-				callResults[i] = *callResult
+			specVersion, specTitle, specFormat, failedCall := getAsyncAPISpecInfo(url, currentSpecUrl, ref.Timeout)
+			if failedCall != nil {
+				log.Debugf("Failed to read asyncapi spec from %s: %s", url, failedCall.ErrorSummary)
+				failedCalls[i] = *failedCall
 				if ref.Required {
-					errors[i] = fmt.Sprintf("Failed to read required asyncapi spec from %s: %s", url, callResult.ErrorSummary)
+					errors[i] = fmt.Sprintf("Failed to read required asyncapi spec from %s: %s", url, failedCall.ErrorSummary)
 				}
 				return
 			}
@@ -103,7 +103,7 @@ func (r asyncAPIDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.
 
 	wg.Wait()
 
-	return utils.FilterResultDocuments(result), utils.FilterEndpointCallResults(callResults), utils.FilterResultErrors(errors)
+	return utils.FilterResultDocuments(result), utils.FilterFailedEndpointCalls(failedCalls), utils.FilterResultErrors(errors)
 }
 
 func getAsyncAPISpecInfo(specUrl string, relativePath string, timeout time.Duration) (string, string, string, *view.EndpointCallInfo) {
