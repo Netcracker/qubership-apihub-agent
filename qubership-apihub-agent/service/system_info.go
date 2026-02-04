@@ -40,6 +40,8 @@ type SystemInfoService interface {
 	GetBasePath() string
 	GetPaasPlatform() string
 	GetDiscoveryUrls() config.ApiTypeUrlsConfig
+	GetNamespacesCacheTTL() time.Duration
+	GetServicesCacheTTL() time.Duration
 }
 
 func NewSystemInfoService() (SystemInfoService, error) {
@@ -135,6 +137,14 @@ func (g systemInfoServiceImpl) GetDiscoveryTimeout() time.Duration {
 
 func (g systemInfoServiceImpl) InsecureProxyEnabled() bool {
 	return g.config.Security.InsecureProxy
+}
+
+func (g systemInfoServiceImpl) GetNamespacesCacheTTL() time.Duration {
+	return time.Duration(g.config.TechnicalParameters.NamespacesCacheTTLMin) * time.Minute
+}
+
+func (g systemInfoServiceImpl) GetServicesCacheTTL() time.Duration {
+	return time.Duration(g.config.TechnicalParameters.ServicesCacheTTLMin) * time.Minute
 }
 
 func (g systemInfoServiceImpl) GetBasePath() string {

@@ -17,10 +17,12 @@ package asyncapi
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/Netcracker/qubership-apihub-agent/api_type/generic"
+	"github.com/Netcracker/qubership-apihub-agent/exception"
 	"github.com/Netcracker/qubership-apihub-agent/utils"
 	"github.com/Netcracker/qubership-apihub-agent/view"
 	log "github.com/sirupsen/logrus"
@@ -37,18 +39,19 @@ func NewAsyncAPIDiscoveryRunner() generic.DiscoveryRunner {
 type asyncAPIDiscoveryRunner struct {
 }
 
-func (r asyncAPIDiscoveryRunner) DiscoverDocuments(baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, error) {
+func (r asyncAPIDiscoveryRunner) DiscoverDocuments(baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error) {
 	refs := utils.MakeDocumentRefsFromUrls(urls.AsyncAPI, view.ATAsyncAPI, false, timeout)
-	return r.GetDocumentsByRefs(baseUrl, refs)
+	return r.GetDocumentsByRefs(baseUrl, refs, "")
 }
 
-func (r asyncAPIDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.DocumentRef) ([]view.Document, error) {
+func (r asyncAPIDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
 	filteredRefs := r.FilterRefsForApiType(refs) // take only appropriate api type
 	if len(filteredRefs) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	result := make([]view.Document, len(filteredRefs))
+	callResults := make([]view.EndpointCallInfo, len(filteredRefs))
 	errors := make([]string, len(filteredRefs))
 
 	wg := sync.WaitGroup{}
@@ -64,53 +67,65 @@ func (r asyncAPIDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.
 		utils.SafeAsync(func() {
 			defer wg.Done()
 
-			spec := view.Document{
-				Path: currentSpecUrl,
-			}
-
 			url := baseUrl + currentSpecUrl
 
-			specVersion, specTitle, specFormat, err := getAsyncAPISpecInfo(url, ref.Timeout)
-			if err != nil {
-				log.Debugf("Failed to read asyncapi spec from %s: %s", url, err)
+			specVersion, specTitle, specFormat, callResult := getAsyncAPISpecInfo(url, currentSpecUrl, ref.Timeout)
+			if callResult != nil {
+				log.Debugf("Failed to read asyncapi spec from %s: %s", url, callResult.ErrorSummary)
+				callResults[i] = *callResult
+				if ref.Required {
+					errors[i] = fmt.Sprintf("Failed to read required asyncapi spec from %s: %s", url, callResult.ErrorSummary)
+				}
 				return
 			}
 			log.Debugf("Got valid asyncapi spec from: %v", url)
+
+			var name string
 			if currentSpecRef.Name != "" {
-				spec.Name = currentSpecRef.Name
+				name = currentSpecRef.Name
 			} else if specTitle != "" {
-				spec.Name = specTitle
+				name = specTitle
 			} else {
-				spec.Name = DefaultAsyncAPISpecName
+				name = DefaultAsyncAPISpecName
 			}
-			spec.Format = specFormat
-			spec.FileId = utils.GenerateFileId(&fileIds, spec.Name, specFormat)
-			spec.Type = specVersion
 
-			spec.XApiKind = currentSpecRef.XApiKind
-
-			result[i] = spec
+			result[i] = view.Document{
+				Name:       name,
+				Format:     specFormat,
+				FileId:     utils.GenerateFileId(&fileIds, name, specFormat),
+				Type:       specVersion,
+				XApiKind:   currentSpecRef.XApiKind,
+				DocPath:    currentSpecUrl,
+				ConfigPath: configPath,
+			}
 		})
 	}
 
 	wg.Wait()
 
-	return utils.FilterResultDocuments(result), utils.FilterResultErrors(errors)
+	return utils.FilterResultDocuments(result), utils.FilterEndpointCallResults(callResults), utils.FilterResultErrors(errors)
 }
 
-func getAsyncAPISpecInfo(specUrl string, timeout time.Duration) (string, string, string, error) {
-	var spec view.JsonMap
+func getAsyncAPISpecInfo(specUrl string, relativePath string, timeout time.Duration) (string, string, string, *view.EndpointCallInfo) {
 	spec, specFormat, err := generic.GetGenericObjectFromUrl(specUrl, timeout)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get specification from '%v': %v", specUrl, err.Error())
-	}
-	if spec == nil {
-		return "", "", "", fmt.Errorf("specification from '%v' is invalid", specUrl)
+		var statusCode int
+		if customError, ok := err.(*exception.CustomError); ok {
+			statusCode, _ = strconv.Atoi(customError.Params["code"].(string))
+		}
+		return "", "", "", &view.EndpointCallInfo{
+			Path:         relativePath,
+			StatusCode:   statusCode,
+			ErrorSummary: fmt.Sprintf("failed to get AsyncAPI specification: %v", err.Error()),
+		}
 	}
 
 	asyncapiVersion := spec.GetValueAsString("asyncapi")
 	if asyncapiVersion == "" {
-		return "", "", "", fmt.Errorf("not an asyncapi spec at '%v': missing 'asyncapi' field", specUrl)
+		return "", "", "", &view.EndpointCallInfo{
+			Path:         relativePath,
+			ErrorSummary: "not an AsyncAPI spec: missing 'asyncapi' field",
+		}
 	}
 
 	infoObject := spec.GetObject("info")
@@ -125,7 +140,10 @@ func getAsyncAPISpecInfo(specUrl string, timeout time.Duration) (string, string,
 		return view.AsyncAPI30Type, specTitle, specFormat, nil
 	}
 
-	return "", "", "", fmt.Errorf("failed to determine asyncapi version from spec at '%v': version '%s'", specUrl, asyncapiVersion)
+	return "", "", "", &view.EndpointCallInfo{
+		Path:         relativePath,
+		ErrorSummary: fmt.Sprintf("unsupported AsyncAPI version: %s (expected 3.0.x)", asyncapiVersion),
+	}
 }
 
 func (r asyncAPIDiscoveryRunner) FilterRefsForApiType(refs []view.DocumentRef) []view.DocumentRef {

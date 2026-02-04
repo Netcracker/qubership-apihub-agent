@@ -7,15 +7,17 @@ type Config struct {
 }
 
 type TechnicalParameters struct {
-	BasePath      string
-	ListenAddress string `validate:"required"`
-	Version       string
-	Apihub        ApihubConfig
-	AgentUrl      string `validate:"required"`
-	CloudName     string `validate:"required,slug_only_characters"`
-	Namespace     string `validate:"required,slug_only_characters"`
-	AgentName     string `validate:"required,slug_only_characters"`
-	PaasPlatform  string `validate:"required"`
+	BasePath              string
+	ListenAddress         string `validate:"required"`
+	Version               string
+	Apihub                ApihubConfig
+	AgentUrl              string `validate:"required"`
+	CloudName             string `validate:"required,slug_only_characters"`
+	Namespace             string `validate:"required,slug_only_characters"`
+	AgentName             string `validate:"required,slug_only_characters"`
+	PaasPlatform          string `validate:"required"`
+	NamespacesCacheTTLMin int
+	ServicesCacheTTLMin   int
 }
 
 type ApihubConfig struct {
