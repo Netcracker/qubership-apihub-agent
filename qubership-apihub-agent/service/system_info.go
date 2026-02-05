@@ -72,6 +72,8 @@ func setDefaults() {
 	viper.SetDefault("technicalParameters.cloudName", "unknown")
 	viper.SetDefault("technicalParameters.namespace", "unknown")
 	viper.SetDefault("technicalParameters.paasPlatform", "KUBERNETES")
+	viper.SetDefault("technicalParameters.namespacesCacheTTLMin", 1440)
+	viper.SetDefault("technicalParameters.servicesCacheTTLMin", 480)
 	viper.SetDefault("security.allowedOrigins", []string{})
 	viper.SetDefault("security.insecureProxy", false)
 	viper.SetDefault("discovery.excludeLabels", []string{})
