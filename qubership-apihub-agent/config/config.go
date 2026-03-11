@@ -14,7 +14,7 @@ type TechnicalParameters struct {
 	AgentUrl              string `validate:"required"`
 	CloudName             string `validate:"required,slug_only_characters"`
 	Namespace             string `validate:"required,slug_only_characters"`
-	AgentName             string `validate:"required,slug_only_characters"`
+	AgentName             string `validate:"slug_only_characters"`
 	PaasPlatform          string `validate:"required"`
 	NamespacesCacheTTLMin int
 	ServicesCacheTTLMin   int

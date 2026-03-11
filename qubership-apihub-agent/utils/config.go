@@ -15,6 +15,9 @@ var slugPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 func validateSlugOnlyCharacters(fl validator.FieldLevel) bool {
 	value := fl.Field().String()
+	if value == "" {
+		return true
+	}
 	return slugPattern.MatchString(value)
 }
 

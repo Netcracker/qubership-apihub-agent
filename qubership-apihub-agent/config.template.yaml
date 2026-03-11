@@ -17,9 +17,9 @@ technicalParameters:
   cloudName: ''
   # Mandatory; Name of k8s namespace where Qubership APIHUB Agent is deployed; If not set, default value: unknown; Example: myStagingK8sCluster
   namespace: ''
-  # Mandatory; Display name of Qubership APIHUB Agent's instance; If not set, default value: ""; Example: apihub-agent-1
+  # Optional; Display name of Qubership APIHUB Agent's instance; If not set, default value: ""; Example: apihub-agent-1
   agentName: ''
-  # Optional; Platform type for paas-mediation client initialization. Determines which Kubernetes API client to use; If not set, default value: KUBERNETES; Example: OPENSHIFT
+  # Mandatory; Platform type for paas-mediation client initialization. Determines which Kubernetes API client to use; If not set, default value: KUBERNETES; Example: OPENSHIFT
   paasPlatform: 'KUBERNETES'
   # Optional; TTL value for namespaces cache; If not set, default value: 1440; Example: 600
   namespacesCacheTTLMin: 1440
