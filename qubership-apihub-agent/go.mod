@@ -3,7 +3,7 @@ module github.com/Netcracker/qubership-apihub-agent
 go 1.26.1
 
 require (
-	github.com/go-playground/validator/v10 v10.30.0
+	github.com/go-playground/validator/v10 v10.30.2
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
