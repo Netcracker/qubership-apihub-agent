@@ -11,6 +11,7 @@ const (
 	GraphAPIType      string = "graphapi"
 	GraphQLType       string = "graphql"
 	IntrospectionType string = "introspection"
+	McpType           string = "mcp"
 	UnknownType       string = "unknown"
 )
 
@@ -34,6 +35,8 @@ func DocTypeToApiType(documentType string) ApiType {
 		return ATJsonSchema
 	case AsyncAPI30Type:
 		return ATAsyncAPI
+	case McpType:
+		return ATMcp
 	default:
 		return ATUnknown
 	}

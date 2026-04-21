@@ -12,6 +12,7 @@ const CustomK8sOpenapiUrl = "apihub-openapi-url"
 const CustomK8sGraphqlUrl = "apihub-graphql-url"
 const CustomK8sGraphqlIntUrl = "apihub-graphql-int-url"
 const CustomK8sGraphqlConfigUrl = "apihub-graphql-config-url"
+const CustomK8sMcpUrl = "apihub-mcp-url"
 
 type DocumentDiscoveryUrls struct {
 	ApihubConfig  []string
@@ -24,6 +25,8 @@ type DocumentDiscoveryUrls struct {
 	GraphqlIntrospection []string
 
 	AsyncAPI []string
+
+	Mcp []string
 }
 
 func MakeDocDiscoveryUrls(baseUrls config.ApiTypeUrlsConfig, annotations map[string]string) DocumentDiscoveryUrls {
@@ -35,6 +38,7 @@ func MakeDocDiscoveryUrls(baseUrls config.ApiTypeUrlsConfig, annotations map[str
 		GraphqlSchema:        copyWithPrepend(baseUrls.GraphQL.DocUrls, annotations[CustomK8sGraphqlUrl]),
 		GraphqlIntrospection: copyWithPrepend(nil, annotations[CustomK8sGraphqlIntUrl]),
 		AsyncAPI:             copyWithPrepend(baseUrls.AsyncAPI.DocUrls, ""),
+		Mcp:                  copyWithPrepend(baseUrls.Mcp.DocUrls, annotations[CustomK8sMcpUrl]),
 	}
 }
 

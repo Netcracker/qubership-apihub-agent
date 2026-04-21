@@ -42,6 +42,7 @@ type ApiTypeUrlsConfig struct {
 	GraphQL      UrlsConfig           `mapstructure:"graphql"`
 	ApihubConfig ConfigOnlyUrlsConfig `mapstructure:"apihub-config"`
 	AsyncAPI     DocOnlyUrlsConfig    `mapstructure:"asyncapi"`
+	Mcp          DocOnlyUrlsConfig    `mapstructure:"mcp"`
 }
 
 type UrlsConfig struct {
