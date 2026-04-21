@@ -13,6 +13,7 @@ import (
 	"github.com/Netcracker/qubership-apihub-agent/api_type/graphql"
 	"github.com/Netcracker/qubership-apihub-agent/api_type/json_schema"
 	"github.com/Netcracker/qubership-apihub-agent/api_type/markdown"
+	"github.com/Netcracker/qubership-apihub-agent/api_type/mcp"
 	"github.com/Netcracker/qubership-apihub-agent/api_type/rest"
 	"github.com/Netcracker/qubership-apihub-agent/api_type/unknown"
 	"github.com/Netcracker/qubership-apihub-agent/utils"
@@ -40,6 +41,7 @@ func NewDocumentsDiscoveryService(discoveryTimeout time.Duration) DocumentsDisco
 			unknown.NewUnknownDiscoveryRunner(),
 			json_schema.NewJsonSchemaDiscoveryRunner(),
 			asyncapi.NewAsyncAPIDiscoveryRunner(),
+			mcp.NewMcpDiscoveryRunner(),
 		},
 		discoveryTimeout: discoveryTimeout,
 	}

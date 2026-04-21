@@ -67,3 +67,6 @@ discovery:
     asyncapi:
       doc-urls:
         - /v3/api-docs/asyncapi
+    mcp:
+      doc-urls:
+        - /api/v1/mcp
