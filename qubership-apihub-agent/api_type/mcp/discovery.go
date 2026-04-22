@@ -43,6 +43,7 @@ type authTransport struct {
 
 func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	clonedReq := req.Clone(req.Context())
+	log.Infof("api-key header added")
 	clonedReq.Header.Set("api-key", t.key) // FIXME: just for testing
 
 	base := t.Base
@@ -81,7 +82,7 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 				Endpoint: url,
 				HTTPClient: &http.Client{
 					Transport: &authTransport{
-						key: "8231f12d-054a-4a4b-be50-fda715694f3b", // FIXME: just for testing
+						key: "ecd8a844aaa99e37d2a7c7c0432b4a755cf583ffc93f02a37b737b25661932d7", // FIXME: just for testing
 					},
 				},
 			}
