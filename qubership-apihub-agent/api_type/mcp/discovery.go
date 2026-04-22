@@ -71,11 +71,13 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 
 	// for MCP the implementation is different: connect to an endpoint(could be multiple MCP endpoints!!)
 
-	for i, ref := range filteredRefs {
+	for it, ref := range filteredRefs {
 
+		i := it
 		currentSpecUrl := ref.Url
 
 		utils.SafeAsync(func() {
+			defer wg.Done()
 			ctx, cancelFunc := context.WithTimeout(context.Background(), ref.Timeout)
 			defer cancelFunc()
 			url := baseUrl + currentSpecUrl
@@ -205,10 +207,9 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 				}
 			}
 
-			return // FIXME: close the session!
-			/*if err = session.Close(); err != nil {
+			if err = session.Close(); err != nil {
 				log.Warnf("Failed to close MCP session for endpoint %s: %s", ref.Url, err.Error())
-			}*/
+			}
 		})
 	}
 
