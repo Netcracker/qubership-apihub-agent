@@ -148,8 +148,8 @@ func GetMcpDocumentFromUrl(url string, documentName string, timeout time.Duratio
 			continue
 		}
 		
-		// Marshal to map to check if it's a response
-		b, err := json.Marshal(msg)
+		// Encode to wire format to check if it's a response
+		b, err := jsonrpc.EncodeMessage(msg)
 		if err == nil {
 			var m map[string]interface{}
 			if err := json.Unmarshal(b, &m); err == nil {
@@ -169,9 +169,17 @@ func GetMcpDocumentFromUrl(url string, documentName string, timeout time.Duratio
 		return nil, fmt.Errorf("no JSON-RPC response captured for %s", documentName)
 	}
 
-	bytes, err := json.MarshalIndent(responseMsg, "", "  ")
+	bytes, err := jsonrpc.EncodeMessage(responseMsg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal MCP result: %w", err)
+		return nil, fmt.Errorf("failed to encode MCP result: %w", err)
+	}
+
+	// Format the JSON nicely
+	var prettyJSON map[string]interface{}
+	if err := json.Unmarshal(bytes, &prettyJSON); err == nil {
+		if prettyBytes, err := json.MarshalIndent(prettyJSON, "", "  "); err == nil {
+			return prettyBytes, nil
+		}
 	}
 
 	return bytes, nil
