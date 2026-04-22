@@ -103,9 +103,14 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 			urlSlug := slug.Make(ref.Url)
 
 			var serverCaps *mcp.ServerCapabilities
-			if ir := session.InitializeResult(); ir != nil {
+			ir := session.InitializeResult()
+			if ir != nil {
 				serverCaps = ir.Capabilities
 			}
+			log.Infof("MCP init resp: %+v", ir)
+
+			// TODO: MCP instructions
+
 			if serverCaps != nil && serverCaps.Tools != nil {
 				toolsRes, err := session.ListTools(ctx, nil) // TODO: handle paging(cursor)
 				if err != nil {
