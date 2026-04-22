@@ -205,9 +205,10 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 				}
 			}
 
-			if err = session.Close(); err != nil {
+			return // FIXME: close the session!
+			/*if err = session.Close(); err != nil {
 				log.Warnf("Failed to close MCP session for endpoint %s: %s", ref.Url, err.Error())
-			}
+			}*/
 		})
 	}
 
