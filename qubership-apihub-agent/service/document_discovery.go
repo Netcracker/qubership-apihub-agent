@@ -120,11 +120,15 @@ func removeDuplicateDocuments(specs []view.Document) []view.Document {
 	result := make([]view.Document, 0)
 	uniqueIds := make(map[string]string)
 	for _, spec := range specs {
-		if _, exists := uniqueIds[spec.DocPath]; exists {
+		key := spec.DocPath
+		if spec.Type == view.McpType {
+			key = spec.DocPath + ":" + spec.Name
+		}
+		if _, exists := uniqueIds[key]; exists {
 			continue
 		}
 		result = append(result, spec)
-		uniqueIds[spec.DocPath] = spec.DocPath
+		uniqueIds[key] = key
 	}
 	return result
 }

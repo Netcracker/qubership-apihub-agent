@@ -35,11 +35,13 @@ func (d documentServiceImpl) GetDocumentById(namespace, workspaceId, serviceId, 
 			break
 		}
 	}
+	var documentName string
 	for _, document := range svc.Documents {
 		if document.FileId == fileId {
 			relPath = document.DocPath
 			documentType = document.Type
 			format = document.Format
+			documentName = document.Name
 			break
 		}
 	}
@@ -66,6 +68,8 @@ func (d documentServiceImpl) GetDocumentById(namespace, workspaceId, serviceId, 
 		} else {
 			content, err = client.GetRawDocumentFromUrl(specUrl, string(view.ATGraphql), d.getDocTimeout)
 		}
+	case view.McpType:
+		content, err = client.GetMcpDocumentFromUrl(specUrl, documentName, d.getDocTimeout)
 	default:
 		content, err = client.GetRawDocumentFromUrl(specUrl, documentType, d.getDocTimeout)
 	}
