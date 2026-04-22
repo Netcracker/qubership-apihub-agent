@@ -113,7 +113,15 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 			}
 			log.Infof("MCP init resp: %+v", ir)
 
-			// TODO: MCP instructions
+			result = append(result, view.Document{
+				Name:       "init",
+				Format:     "json",
+				FileId:     "init" + urlSlug + ".json",
+				Type:       view.McpType,
+				XApiKind:   view.UnknownType,
+				DocPath:    ref.Url,
+				ConfigPath: "",
+			})
 
 			if serverCaps != nil && serverCaps.Tools != nil {
 				toolsRes, err := session.ListTools(ctx, nil) // TODO: handle paging(cursor)
@@ -127,6 +135,7 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 					}
 					return
 				}
+				log.Infof("toolsRes: %+v", toolsRes)
 				if len(toolsRes.Tools) > 0 {
 					result = append(result, view.Document{
 						Name:       "tools",
@@ -154,6 +163,7 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 					}
 					return
 				}
+				log.Infof("resourcesRes: %+v", resourcesRes)
 				if len(resourcesRes.Resources) > 0 {
 					result = append(result, view.Document{
 						Name:       "resources",
@@ -181,6 +191,7 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 					}
 					return
 				}
+				log.Infof("promptsRes: %+v", promptsRes)
 				if len(promptsRes.Prompts) > 0 {
 					result = append(result, view.Document{
 						Name:       "prompts",
