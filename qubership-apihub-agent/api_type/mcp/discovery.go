@@ -36,14 +36,6 @@ func (r mcpDiscoveryRunner) DiscoverDocuments(baseUrl string, urls view.Document
 
 }
 
-type LoggingTransport struct {
-	mcp.Transport
-}
-
-func (lt LoggingTransport) Connect(ctx context.Context) (mcp.Connection, error) {
-	return lt.Transport.Connect(ctx)
-}
-
 func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
 	// TODO: not sure if applicable to MCP in real life
 
@@ -59,124 +51,123 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 	// for MCP the implementation is different: connect to an endpoint(could be multiple MCP endpoints!!)
 
 	for i, ref := range filteredRefs {
-		ctx, cancelFunc := context.WithTimeout(context.Background(), ref.Timeout)
 
-		// Create a new client, with no features.
-		client := mcp.NewClient(&mcp.Implementation{Name: "mcp-client", Version: "v1.0.0"}, nil)
+		currentSpecUrl := ref.Url
 
-		transport := &mcp.StreamableClientTransport{
-			Endpoint: ref.Url,
-		}
+		utils.SafeAsync(func() {
+			ctx, cancelFunc := context.WithTimeout(context.Background(), ref.Timeout)
+			defer cancelFunc()
+			url := baseUrl + currentSpecUrl
 
-		lt := LoggingTransport{
-			Transport: transport,
-		}
+			// Create a new client, with no features.
+			client := mcp.NewClient(&mcp.Implementation{Name: "mcp-client", Version: "v1.0.0"}, nil)
 
-		session, err := client.Connect(ctx, lt, nil)
-		if err != nil {
-			failedCalls[i] = view.EndpointCallInfo{
-				Path:         ref.Url,
-				ErrorSummary: fmt.Sprintf("Failed to connect to MCP endpoint: %s", err.Error()),
+			transport := &mcp.StreamableClientTransport{
+				Endpoint: url,
 			}
-			if ref.Required {
-				errors[i] = fmt.Sprintf("Failed to connect to required MCP endpoint %s: %s", ref.Url, err.Error())
-			}
-			cancelFunc()
-			continue
-		}
 
-		urlSlug := slug.Make(ref.Url) // TODO: use only path from the URL!!!
-
-		var serverCaps *mcp.ServerCapabilities
-		if ir := session.InitializeResult(); ir != nil {
-			serverCaps = ir.Capabilities
-		}
-		if serverCaps != nil && serverCaps.Tools != nil {
-			toolsRes, err := session.ListTools(ctx, nil) // TODO: handle paging(cursor)
+			session, err := client.Connect(ctx, transport, nil)
 			if err != nil {
 				failedCalls[i] = view.EndpointCallInfo{
-					Path:         ref.Url,
-					ErrorSummary: fmt.Sprintf("Failed to list tools from MCP endpoint: %s", err.Error()),
+					Path:         url,
+					ErrorSummary: fmt.Sprintf("Failed to connect to MCP endpoint: %s", err.Error()),
 				}
+				log.Warnf("Failed to connect to MCP endpoint: URL=%s: %s", url, err.Error())
 				if ref.Required {
-					errors[i] = fmt.Sprintf("Failed to list tools from required MCP endpoint %s: %s", ref.Url, err.Error())
+					errors[i] = fmt.Sprintf("Failed to connect to required MCP endpoint %s: %s", url, err.Error())
 				}
-				cancelFunc()
-				continue
+				return
 			}
-			if len(toolsRes.Tools) > 0 {
-				result = append(result, view.Document{
-					Name:       "tools",
-					Format:     "json",
-					FileId:     "tools_" + urlSlug + ".json",
-					Type:       view.McpType,
-					XApiKind:   view.UnknownType,
-					DocPath:    ref.Url,
-					ConfigPath: "",
-				})
-			}
-		}
-		if serverCaps != nil && serverCaps.Resources != nil {
-			resourcesRes, err := session.ListResources(ctx, nil) // TODO: handle paging(cursor)
-			if err != nil {
-				failedCalls[i] = view.EndpointCallInfo{
-					Path:         ref.Url,
-					ErrorSummary: fmt.Sprintf("Failed to list resources from MCP endpoint: %s", err.Error()),
-				}
-				if ref.Required {
-					errors[i] = fmt.Sprintf("Failed to list resources from required MCP endpoint %s: %s", ref.Url, err.Error())
-				}
-				if err = session.Close(); err != nil {
-					log.Warnf("Failed to close MCP session for endpoint %s: %s", ref.Url, err.Error())
-				}
-				cancelFunc()
-				continue
-			}
-			if len(resourcesRes.Resources) > 0 {
-				result = append(result, view.Document{
-					Name:       "resources",
-					Format:     "json",
-					FileId:     "resources_" + urlSlug + ".json",
-					Type:       view.McpType,
-					XApiKind:   view.UnknownType,
-					DocPath:    ref.Url,
-					ConfigPath: "",
-				})
-			}
-		}
-		if serverCaps != nil && serverCaps.Prompts != nil {
-			promptsRes, err := session.ListPrompts(ctx, nil) // TODO: handle paging(cursor)
-			if err != nil {
-				failedCalls[i] = view.EndpointCallInfo{
-					Path:         ref.Url,
-					ErrorSummary: fmt.Sprintf("Failed to list prompts from MCP endpoint: %s", err.Error()),
-				}
-				if ref.Required {
-					errors[i] = fmt.Sprintf("Failed to list prompts from required MCP endpoint %s: %s", ref.Url, err.Error())
-				}
-				if err = session.Close(); err != nil {
-					log.Warnf("Failed to close MCP session for endpoint %s: %s", ref.Url, err.Error())
-				}
-				cancelFunc()
-				continue
-			}
-			if len(promptsRes.Prompts) > 0 {
-				result = append(result, view.Document{
-					Name:       "prompts",
-					Format:     "json",
-					FileId:     "prompts_" + urlSlug + ".json",
-					Type:       view.McpType,
-					XApiKind:   view.UnknownType,
-					DocPath:    ref.Url,
-					ConfigPath: "",
-				})
-			}
-		}
 
-		if err = session.Close(); err != nil {
-			log.Warnf("Failed to close MCP session for endpoint %s: %s", ref.Url, err.Error())
-		}
-		cancelFunc()
+			urlSlug := slug.Make(ref.Url)
+
+			var serverCaps *mcp.ServerCapabilities
+			if ir := session.InitializeResult(); ir != nil {
+				serverCaps = ir.Capabilities
+			}
+			if serverCaps != nil && serverCaps.Tools != nil {
+				toolsRes, err := session.ListTools(ctx, nil) // TODO: handle paging(cursor)
+				if err != nil {
+					failedCalls[i] = view.EndpointCallInfo{
+						Path:         ref.Url,
+						ErrorSummary: fmt.Sprintf("Failed to list tools from MCP endpoint: %s", err.Error()),
+					}
+					if ref.Required {
+						errors[i] = fmt.Sprintf("Failed to list tools from required MCP endpoint %s: %s", ref.Url, err.Error())
+					}
+					return
+				}
+				if len(toolsRes.Tools) > 0 {
+					result = append(result, view.Document{
+						Name:       "tools",
+						Format:     "json",
+						FileId:     "tools_" + urlSlug + ".json",
+						Type:       view.McpType,
+						XApiKind:   view.UnknownType,
+						DocPath:    ref.Url,
+						ConfigPath: "",
+					})
+				}
+			}
+			if serverCaps != nil && serverCaps.Resources != nil {
+				resourcesRes, err := session.ListResources(ctx, nil) // TODO: handle paging(cursor)
+				if err != nil {
+					failedCalls[i] = view.EndpointCallInfo{
+						Path:         ref.Url,
+						ErrorSummary: fmt.Sprintf("Failed to list resources from MCP endpoint: %s", err.Error()),
+					}
+					if ref.Required {
+						errors[i] = fmt.Sprintf("Failed to list resources from required MCP endpoint %s: %s", ref.Url, err.Error())
+					}
+					if err = session.Close(); err != nil {
+						log.Warnf("Failed to close MCP session for endpoint %s: %s", ref.Url, err.Error())
+					}
+					return
+				}
+				if len(resourcesRes.Resources) > 0 {
+					result = append(result, view.Document{
+						Name:       "resources",
+						Format:     "json",
+						FileId:     "resources_" + urlSlug + ".json",
+						Type:       view.McpType,
+						XApiKind:   view.UnknownType,
+						DocPath:    ref.Url,
+						ConfigPath: "",
+					})
+				}
+			}
+			if serverCaps != nil && serverCaps.Prompts != nil {
+				promptsRes, err := session.ListPrompts(ctx, nil) // TODO: handle paging(cursor)
+				if err != nil {
+					failedCalls[i] = view.EndpointCallInfo{
+						Path:         ref.Url,
+						ErrorSummary: fmt.Sprintf("Failed to list prompts from MCP endpoint: %s", err.Error()),
+					}
+					if ref.Required {
+						errors[i] = fmt.Sprintf("Failed to list prompts from required MCP endpoint %s: %s", ref.Url, err.Error())
+					}
+					if err = session.Close(); err != nil {
+						log.Warnf("Failed to close MCP session for endpoint %s: %s", ref.Url, err.Error())
+					}
+					return
+				}
+				if len(promptsRes.Prompts) > 0 {
+					result = append(result, view.Document{
+						Name:       "prompts",
+						Format:     "json",
+						FileId:     "prompts_" + urlSlug + ".json",
+						Type:       view.McpType,
+						XApiKind:   view.UnknownType,
+						DocPath:    ref.Url,
+						ConfigPath: "",
+					})
+				}
+			}
+
+			if err = session.Close(); err != nil {
+				log.Warnf("Failed to close MCP session for endpoint %s: %s", ref.Url, err.Error())
+			}
+		})
 	}
 
 	// 1. iterate over refs to detect different MCP endpoints
