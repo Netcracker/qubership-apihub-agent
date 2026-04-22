@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/Netcracker/qubership-apihub-agent/api_type/generic"
@@ -64,6 +65,9 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 	result := make([]view.Document, len(filteredRefs))
 	failedCalls := make([]view.EndpointCallInfo, len(filteredRefs))
 	errors := make([]string, len(filteredRefs))
+
+	wg := sync.WaitGroup{}
+	wg.Add(len(filteredRefs))
 
 	// for MCP the implementation is different: connect to an endpoint(could be multiple MCP endpoints!!)
 
@@ -201,6 +205,8 @@ func (r mcpDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.Docum
 	// 3. send init anyway + initialized notification
 	// 4. iterate over capabilities and collect raw responses along with server init response.
 	// same as above ...
+
+	wg.Wait()
 
 	return utils.FilterResultDocuments(result), utils.FilterFailedEndpointCalls(failedCalls), utils.FilterResultErrors(errors)
 }
