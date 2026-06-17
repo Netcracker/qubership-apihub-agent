@@ -19,6 +19,15 @@ qubershipApihubAgent:
   # Optional; Set log level on init to specified value. Values: Info, Warn, Error, etc; If not set, default value: INFO; Example: DEBUG
   logLevel: ''
 
+  # Optional; custom CA certificates for agent HTTPS outbound calls (APIHUB, agents-backend, discovery, service proxy).
+  # Requires the qubership-core-base runtime image. The base image entrypoint loads .crt/.cer/.pem files from
+  # /tmp/cert into the system trust store before the application starts.
+  customCa:
+    # Optional; mount custom CA Secret when true; If not set, default value: false; Example: true
+    enabled: false
+    # Optional; Kubernetes Secret name with one or more PEM certificate files (.crt, .cer, or .pem keys); If not set, default value: ""; Example: apihub-agent-custom-ca
+    secretName: ''
+
   # Section with business and technical parameters for Qubership APIHUB Agent.
   env:
     # Section with technical parameters

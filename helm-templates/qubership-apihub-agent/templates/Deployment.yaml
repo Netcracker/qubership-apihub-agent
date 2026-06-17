@@ -34,6 +34,12 @@ spec:
             secretName: qubership-apihub-agent-config-secret
         - name: tmp-volume
           emptyDir: {}
+        {{- if and .Values.qubershipApihubAgent.customCa.enabled .Values.qubershipApihubAgent.customCa.secretName }}
+        - name: qubership-apihub-agent-custom-ca
+          secret:
+            defaultMode: 420
+            secretName: {{ .Values.qubershipApihubAgent.customCa.secretName | quote }}
+        {{- end }}
       hostPID: false
       hostIPC: false
       containers:
@@ -45,6 +51,11 @@ spec:
               readOnly: true
             - name: tmp-volume
               mountPath: /tmp
+            {{- if and .Values.qubershipApihubAgent.customCa.enabled .Values.qubershipApihubAgent.customCa.secretName }}
+            - name: qubership-apihub-agent-custom-ca
+              mountPath: /tmp/cert
+              readOnly: true
+            {{- end }}
           ports:
             - name: web
               containerPort: 8080

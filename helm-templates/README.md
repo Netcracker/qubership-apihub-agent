@@ -65,18 +65,22 @@ helm install qubership-apihub-agent -n qubership-apihub-agent --create-namespace
 
 The agent runtime image is based on `ghcr.io/netcracker/qubership-core-base`. Custom CA certificates are loaded into the system trust store by the base image entrypoint from `/tmp/cert/` before the application starts.
 
-1. Mount `.crt`, `.cer`, or `.pem` files into `/tmp/cert/` (Compose volume or Kubernetes Secret/ConfigMap mount).
-2. The entrypoint runs `update-ca-certificates` and Go HTTP clients use `x509.SystemCertPool()` automatically.
-
-Example Kubernetes volume mount:
+1. Create a Kubernetes Secret with one or more `.crt`, `.cer`, or `.pem` files.
+2. Enable the optional Helm mount:
 
 ```yaml
-volumeMounts:
-  - name: custom-ca
-    mountPath: /tmp/cert
-    readOnly: true
-volumes:
-  - name: custom-ca
-    secret:
-      secretName: apihub-custom-ca
+qubershipApihubAgent:
+  customCa:
+    enabled: true
+    secretName: apihub-agent-custom-ca
 ```
+
+Example:
+
+```bash
+kubectl create secret generic apihub-agent-custom-ca \
+  --from-file=company-ca.pem=./company-ca.pem \
+  -n qubership-apihub-agent
+```
+
+Default remains `customCa.enabled: false` (no mount).
