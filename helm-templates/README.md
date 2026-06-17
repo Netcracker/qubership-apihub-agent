@@ -60,3 +60,23 @@ Execute the following command to deploy Qubership APIHUB Agent:
 ```bash
 helm install qubership-apihub-agent -n qubership-apihub-agent --create-namespace -f ./qubership-apihub-agent/local-k8s-values.yaml ./qubership-apihub-agent
 ```
+
+## Custom CA certificates
+
+The agent runtime image is based on `ghcr.io/netcracker/qubership-core-base`. Custom CA certificates are loaded into the system trust store by the base image entrypoint from `/tmp/cert/` before the application starts.
+
+1. Mount `.crt`, `.cer`, or `.pem` files into `/tmp/cert/` (Compose volume or Kubernetes Secret/ConfigMap mount).
+2. The entrypoint runs `update-ca-certificates` and Go HTTP clients use `x509.SystemCertPool()` automatically.
+
+Example Kubernetes volume mount:
+
+```yaml
+volumeMounts:
+  - name: custom-ca
+    mountPath: /tmp/cert
+    readOnly: true
+volumes:
+  - name: custom-ca
+    secret:
+      secretName: apihub-custom-ca
+```
