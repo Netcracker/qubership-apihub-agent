@@ -64,6 +64,8 @@ spec:
           env:
             - name: LOG_LEVEL
               value: '{{ .Values.qubershipApihubAgent.logLevel }}'
+            - name: GOMEMLIMIT
+              value: '{{ .Values.qubershipApihubAgent.goMemLimit | default "205MiB" }}'
             - name: AGENT_CONFIG_FOLDER
               value: '/app/qubership-apihub-agent/etc/'
           resources:

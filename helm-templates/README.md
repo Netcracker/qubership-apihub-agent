@@ -27,8 +27,9 @@ It is ready for usage Helm chart.
 1. Download Qubership APIHUB Agent helm chart
 2. Review [`config.template.yaml`](../qubership-apihub-agent/config.template.yaml) for the full list of configuration parameters and their descriptions
 3. Fill `values.yaml` with your deploy parameters:
-   - Helm-specific settings (image, resources) are at the top level under `qubershipApihubAgent`
+   - Helm-specific settings (image, resources, `goMemLimit`) are at the top level under `qubershipApihubAgent`
    - Application configuration is under `qubershipApihubAgent.env` and follows the same structure as `config.template.yaml`
+   - Keep `goMemLimit` below `resource.memory.limit` (~80% of the limit in chart defaults)
 
 ## Execute helm install
 
