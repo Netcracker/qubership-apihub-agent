@@ -11,7 +11,7 @@ type PersonalAccessTokenItem struct {
 }
 
 type PersonalAccessTokenExtAuthView struct {
-	Pat         PersonalAccessTokenItem `json:"pat"`
+	Pat         PersonalAccessTokenItem `json:"personalAccessToken"`
 	User        User                    `json:"user"`
 	SystemRoles []string                `json:"systemRoles"`
 }
