@@ -30,7 +30,7 @@ func (a apihubPATStrategyImpl) Authenticate(ctx goctx.Context, r *http.Request) 
 		return nil, err
 	}
 	if patResp == nil {
-		return nil, fmt.Errorf("authentication failed: '%v' is not valid", PATHeader)
+		return nil, fmt.Errorf("authentication failed: personal access token is not found")
 	}
 	userExtensions := auth.Extensions{}
 	for _, sysRole := range patResp.SystemRoles {
