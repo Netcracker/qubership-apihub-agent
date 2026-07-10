@@ -250,6 +250,9 @@ func (a apihubClientImpl) GetPatByPAT(ctx context.Context, pat string) (*view.Pe
 		if resp != nil && resp.StatusCode() == http.StatusNotFound {
 			return nil, nil
 		}
+		if authErr := checkUnauthorized(resp); authErr != nil {
+			return nil, authErr
+		}
 		return nil, err
 	}
 
