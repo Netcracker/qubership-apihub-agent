@@ -76,7 +76,7 @@ func GetMcpDocumentFromUrl(url string, documentName string, timeout time.Duratio
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
 
-	client := mcp.NewClient(&mcp.Implementation{Name: "mcp-client", Version: "v1.0.0"}, nil)
+	client := mcp.NewClient(&mcp.Implementation{Name: "apihub-agent", Version: "v0.0.1"}, nil)
 
 	httpTransport := &mcp.StreamableClientTransport{
 		Endpoint: url,
@@ -98,12 +98,9 @@ func GetMcpDocumentFromUrl(url string, documentName string, timeout time.Duratio
 	}
 	defer session.Close()
 
-	// Clear messages before the specific call to only capture the relevant ones
-	// Wait, initialize already happened during Connect.
-	// If documentName is "init", we want the messages from Connect.
 	var relevantMessages []jsonrpc.Message
-
 	if documentName == "init" {
+		// If documentName is "init", we need the messages from the connect phase and no need to send others
 		capTransport.mu.Lock()
 		relevantMessages = append(relevantMessages, capTransport.messages...)
 		capTransport.mu.Unlock()
@@ -113,6 +110,7 @@ func GetMcpDocumentFromUrl(url string, documentName string, timeout time.Duratio
 		capTransport.messages = make([]jsonrpc.Message, 0)
 		capTransport.mu.Unlock()
 
+		// TODO: support paging?
 		switch documentName {
 		case "tools":
 			_, err = session.ListTools(ctx, nil)
@@ -133,11 +131,12 @@ func GetMcpDocumentFromUrl(url string, documentName string, timeout time.Duratio
 			return nil, fmt.Errorf("unknown MCP document name: %s", documentName)
 		}
 
-		// Wait a tiny bit for any trailing messages? No, the response is synchronous with the method return.
 		capTransport.mu.Lock()
 		relevantMessages = append(relevantMessages, capTransport.messages...)
 		capTransport.mu.Unlock()
 	}
+
+	// TODO: maybe better to start from the beginning: find the request and the response
 
 	// We want to return the raw JSON-RPC response message.
 	// The response message is the last one in relevantMessages that is a response.
@@ -147,7 +146,7 @@ func GetMcpDocumentFromUrl(url string, documentName string, timeout time.Duratio
 		if msg == nil {
 			continue
 		}
-		
+
 		// Encode to wire format to check if it's a response
 		b, err := jsonrpc.EncodeMessage(msg)
 		if err == nil {
@@ -176,10 +175,14 @@ func GetMcpDocumentFromUrl(url string, documentName string, timeout time.Duratio
 
 	// Format the JSON nicely
 	var prettyJSON map[string]interface{}
-	if err := json.Unmarshal(bytes, &prettyJSON); err == nil {
-		if prettyBytes, err := json.MarshalIndent(prettyJSON, "", "  "); err == nil {
-			return prettyBytes, nil
-		}
+	err = json.Unmarshal(bytes, &prettyJSON)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal MCP response message: %w. Message: %s", err, string(bytes))
+	}
+	// TODO: process json and extract "result" value
+
+	if prettyBytes, err := json.MarshalIndent(prettyJSON, "", "  "); err == nil {
+		return prettyBytes, nil
 	}
 
 	return bytes, nil
