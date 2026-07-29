@@ -47,10 +47,7 @@ const InsufficientPrivilegesMsg = "You don't have enough privileges to perform t
 const BadRequestBody = "801"
 const BadRequestBodyMsg = "Failed to decode body"
 
-const EmptyServicesList = "900"
-const EmptyServicesListMsg = "Discovery request body must contain a non-empty services list"
-
-const DiscoveryAlreadyRunning = "901"
+const DiscoveryAlreadyRunning = "900"
 const DiscoveryAlreadyRunningMsg = "Discovery for namespace $namespace in workspace $workspaceId is already running"
 
 const HeadersLimitExceeded = "7401"

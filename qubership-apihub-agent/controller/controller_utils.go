@@ -103,12 +103,5 @@ func getDiscoveryRequestBody(w http.ResponseWriter, r *http.Request) (view.Disco
 			Debug:   err.Error(),
 		}
 	}
-	if len(req.Services) == 0 {
-		return req, &exception.CustomError{
-			Status:  http.StatusBadRequest,
-			Code:    exception.EmptyServicesList,
-			Message: exception.EmptyServicesListMsg,
-		}
-	}
 	return req, nil
 }
