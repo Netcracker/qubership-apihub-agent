@@ -1,15 +1,20 @@
 package controller
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 
 	"github.com/Netcracker/qubership-apihub-agent/exception"
+	"github.com/Netcracker/qubership-apihub-agent/view"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
+
+const maxDiscoveryRequestBodySize = 1 << 20 // 1 MiB: the requested services list is otherwise unbounded
 
 func getStringParam(r *http.Request, p string) string {
 	params := mux.Vars(r)
@@ -69,4 +74,41 @@ func getFailOnErrorQueryParam(r *http.Request) (bool, *exception.CustomError) {
 		return val, nil
 	}
 	return false, nil
+}
+
+func getDiscoveryRequestBody(w http.ResponseWriter, r *http.Request) (view.DiscoveryRequest, *exception.CustomError) {
+	var req view.DiscoveryRequest
+	if r.Body == nil {
+		return req, nil
+	}
+
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxDiscoveryRequestBodySize))
+	if err != nil {
+		return req, &exception.CustomError{
+			Status:  http.StatusBadRequest,
+			Code:    exception.BadRequestBody,
+			Message: exception.BadRequestBodyMsg,
+			Debug:   err.Error(),
+		}
+	}
+	if len(bytes.TrimSpace(body)) == 0 {
+		return req, nil
+	}
+
+	if err := json.Unmarshal(body, &req); err != nil {
+		return req, &exception.CustomError{
+			Status:  http.StatusBadRequest,
+			Code:    exception.BadRequestBody,
+			Message: exception.BadRequestBodyMsg,
+			Debug:   err.Error(),
+		}
+	}
+	if len(req.Services) == 0 {
+		return req, &exception.CustomError{
+			Status:  http.StatusBadRequest,
+			Code:    exception.EmptyServicesList,
+			Message: exception.EmptyServicesListMsg,
+		}
+	}
+	return req, nil
 }

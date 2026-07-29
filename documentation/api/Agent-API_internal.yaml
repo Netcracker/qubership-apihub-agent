@@ -203,6 +203,18 @@ paths:
                       - running
                       - complete
                       - error
+                  debug:
+                    description: Diagnostic details for a failed discovery process. Empty when the process succeeded.
+                    type: string
+                  requestedServices:
+                    description: |
+                      The services list supplied when the discovery process was started.
+                      Absent when the process was started without a request body, meaning the whole namespace was discovered.
+                      Compare it against `services[].serviceName` to find requested services that were not found in the namespace.
+                    type: array
+                    items:
+                      type: string
+                    example: ["apihub-be", "apihub-fe"]
         "500":
           $ref: "#/components/responses/internalServerError500"
         "503":
@@ -220,11 +232,22 @@ paths:
       description: |
         Starts an asynchronous service discovery process.
         No process ID is returned; retrieve process status via getServices.
-        At most one discovery process is active per agent.
+        At most one discovery process is active per namespace and workspace; starting another while one is running returns 409.
+      requestBody:
+        required: false
+        description: Optional discovery scope. Omit the body entirely to discover the whole namespace.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscoveryRequest"
       responses:
         "202":
           description: Success
           content: {}
+        "400":
+          $ref: "#/components/responses/badRequest400"
+        "409":
+          $ref: "#/components/responses/conflict409"
         "500":
           $ref: "#/components/responses/internalServerError500"
         "503":
@@ -241,11 +264,22 @@ paths:
       description: |
         Starts an asynchronous service discovery process.
         No process ID is returned; retrieve process status via getServices.
-        At most one discovery process is active per agent.
+        At most one discovery process is active per namespace and workspace; starting another while one is running returns 409.
+      requestBody:
+        required: false
+        description: Optional discovery scope. Omit the body entirely to discover the whole namespace.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscoveryRequest"
       responses:
         "202":
           description: Success
           content: {}
+        "400":
+          $ref: "#/components/responses/badRequest400"
+        "409":
+          $ref: "#/components/responses/conflict409"
         "500":
           $ref: "#/components/responses/internalServerError500"
         "503":
@@ -964,6 +998,25 @@ components:
           type: string
           description: Brief description of the error
           example: "Not Found"
+    DiscoveryRequest:
+      description: |
+        Optional body of a discovery request, used to limit the discovery scope to a well-known list of services.
+        Omit the body entirely to discover every service in the namespace. Once a body is sent, `services` is mandatory
+        and must not be empty, so that a mistyped field cannot silently widen the scope back to the whole namespace.
+      type: object
+      properties:
+        services:
+          description: |
+            Service names to discover. Each entry is matched, exactly and case-sensitively, against the service name
+            reported as `serviceName` in the getServices response — that is, the Kubernetes service name with any
+            trailing blue-green `-v<N>` suffix removed. It is the same name used to resolve the APIHUB baseline package.
+          type: array
+          minItems: 1
+          items:
+            type: string
+          example: ["apihub-be", "apihub-fe"]
+      required:
+        - services
     ErrorResponse:
       description: Standard error response envelope returned for failed requests. Includes HTTP status, internal error code, and human-readable message; params and debug are optional.
       type: object
@@ -997,6 +1050,24 @@ components:
         Authentication failed or credentials were not provided.
         Typical causes include a missing, expired, or invalid Bearer token, API key, or session cookie.
         Re-authenticate via APIHUB (obtain a new Bearer token, API key, or session cookie) and retry the request.
+        The response body follows the ErrorResponse schema.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    badRequest400:
+      description: |
+        The request could not be processed. Typical causes are a malformed JSON body, a body larger than 1 MiB,
+        or a discovery request body whose `services` list is missing or empty.
+        The response body follows the ErrorResponse schema.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    conflict409:
+      description: |
+        A discovery process is already running for this namespace and workspace.
+        Poll getServices until its status is no longer `running`, then retry.
         The response body follows the ErrorResponse schema.
       content:
         application/json:

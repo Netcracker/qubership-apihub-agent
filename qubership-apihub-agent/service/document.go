@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 )
 
 type DocumentService interface {
-	GetDocumentById(namespace, workspaceId, serviceId, fileId string) ([]byte, error)
+	GetDocumentById(ctx context.Context, namespace, workspaceId, serviceId, fileId string) ([]byte, error)
 }
 
 func NewDocumentService(servicesListCache ServiceListCache, getDocTimeout time.Duration) DocumentService {
@@ -22,14 +23,13 @@ type documentServiceImpl struct {
 	getDocTimeout     time.Duration
 }
 
-func (d documentServiceImpl) GetDocumentById(namespace, workspaceId, serviceId, fileId string) ([]byte, error) {
+func (d documentServiceImpl) GetDocumentById(ctx context.Context, namespace, workspaceId, serviceId, fileId string) ([]byte, error) {
 	var svc view.Service
 	var relPath string
 	var documentType string
 	var format string
 
-	slist, _, _ := d.servicesListCache.GetServicesList(namespace, workspaceId)
-	for _, svcIt := range slist {
+	for _, svcIt := range d.servicesListCache.GetServicesList(namespace, workspaceId).Services {
 		if svcIt.Id == serviceId {
 			svc = svcIt
 			break
@@ -59,15 +59,15 @@ func (d documentServiceImpl) GetDocumentById(namespace, workspaceId, serviceId, 
 	var err error
 	switch documentType {
 	case view.OpenAPI20Type, view.OpenAPI30Type, view.OpenAPI31Type:
-		content, err = client.GetRawDocumentFromUrl(specUrl, string(view.ATRest), d.getDocTimeout)
+		content, err = client.GetRawDocumentFromUrl(ctx, specUrl, string(view.ATRest), d.getDocTimeout)
 	case view.GraphQLType:
 		if format == "json" {
-			content, err = client.GetRawGraphqlIntrospectionFromUrl(specUrl, d.getDocTimeout)
+			content, err = client.GetRawGraphqlIntrospectionFromUrl(ctx, specUrl, d.getDocTimeout)
 		} else {
-			content, err = client.GetRawDocumentFromUrl(specUrl, string(view.ATGraphql), d.getDocTimeout)
+			content, err = client.GetRawDocumentFromUrl(ctx, specUrl, string(view.ATGraphql), d.getDocTimeout)
 		}
 	default:
-		content, err = client.GetRawDocumentFromUrl(specUrl, documentType, d.getDocTimeout)
+		content, err = client.GetRawDocumentFromUrl(ctx, specUrl, documentType, d.getDocTimeout)
 	}
 	if err != nil {
 		return nil, err

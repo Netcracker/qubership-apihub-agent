@@ -13,17 +13,29 @@ import (
 )
 
 type ServiceListCache interface {
-	GetServicesList(namespace string, workspaceId string) ([]view.Service, view.StatusEnum, string)
-	handleDiscoveryStart(namespace string, workspaceId string)
-	addService(namespace string, workspaceId string, service view.Service)
-	setResultStatus(namespace string, workspaceId string, status view.StatusEnum, details string)
+	GetServicesList(namespace string, workspaceId string) ServicesListResult
+	handleDiscoveryStart(namespace string, workspaceId string, requestedServices []string) (uint64, bool)
+	isRunCurrent(namespace string, workspaceId string, runId uint64) bool
+	addService(namespace string, workspaceId string, runId uint64, service view.Service) bool
+	setResultStatus(namespace string, workspaceId string, runId uint64, status view.StatusEnum, details string)
 	clearResultsForNamespace(namespace string, workspaceId string)
 }
 
+type ServicesListResult struct {
+	Services          []view.Service
+	Status            view.StatusEnum
+	Details           string
+	RequestedServices []string
+}
+
 type serviceCacheEntry struct {
-	services []view.Service
-	status   view.StatusEnum
-	details  string
+	// runId identifies the discovery run that owns this entry. Writes from any
+	// other run are dropped, so a superseded run cannot pollute a newer result.
+	runId             uint64
+	services          []view.Service
+	status            view.StatusEnum
+	details           string
+	requestedServices []string
 }
 
 func NewServiceListCache(ttl time.Duration) ServiceListCache {
@@ -38,30 +50,54 @@ func NewServiceListCache(ttl time.Duration) ServiceListCache {
 type serviceListCacheImpl struct {
 	cache      libcache.Cache
 	cacheMutex sync.Mutex
+	nextRunId  uint64
 }
 
-func (s *serviceListCacheImpl) GetServicesList(namespace string, workspaceId string) ([]view.Service, view.StatusEnum, string) {
-	id := getNamespaceWithWorkspaceId(namespace, workspaceId)
-
-	val, exists := s.cache.Peek(id)
-	if !exists {
-		return make([]view.Service, 0), view.StatusNone, ""
-	}
-
-	entry := val.(*serviceCacheEntry)
-	return entry.services, entry.status, entry.details
-}
-
-func (s *serviceListCacheImpl) handleDiscoveryStart(namespace string, workspaceId string) {
+func (s *serviceListCacheImpl) GetServicesList(namespace string, workspaceId string) ServicesListResult {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
 
 	id := getNamespaceWithWorkspaceId(namespace, workspaceId)
 
+	val, exists := s.cache.Peek(id)
+	if !exists {
+		return ServicesListResult{Services: make([]view.Service, 0), Status: view.StatusNone}
+	}
+
+	entry := val.(*serviceCacheEntry)
+	services := make([]view.Service, len(entry.services))
+	copy(services, entry.services)
+
+	return ServicesListResult{
+		Services:          services,
+		Status:            entry.status,
+		Details:           entry.details,
+		RequestedServices: entry.requestedServices,
+	}
+}
+
+func (s *serviceListCacheImpl) handleDiscoveryStart(namespace string, workspaceId string, requestedServices []string) (uint64, bool) {
+	s.cacheMutex.Lock()
+	defer s.cacheMutex.Unlock()
+
+	id := getNamespaceWithWorkspaceId(namespace, workspaceId)
+
+	if val, exists := s.cache.Peek(id); exists {
+		if val.(*serviceCacheEntry).status == view.StatusRunning {
+			return 0, false
+		}
+	}
+
+	s.nextRunId++
+	runId := s.nextRunId
+
 	s.cache.Store(id, &serviceCacheEntry{
-		services: []view.Service{},
-		status:   view.StatusRunning,
+		runId:             runId,
+		services:          []view.Service{},
+		status:            view.StatusRunning,
+		requestedServices: requestedServices,
 	})
+	return runId, true
 }
 
 func (s *serviceListCacheImpl) clearResultsForNamespace(namespace string, workspaceId string) {
@@ -70,13 +106,24 @@ func (s *serviceListCacheImpl) clearResultsForNamespace(namespace string, worksp
 
 	id := getNamespaceWithWorkspaceId(namespace, workspaceId)
 
+	s.nextRunId++
+
 	s.cache.Store(id, &serviceCacheEntry{
+		runId:    s.nextRunId,
 		services: []view.Service{},
 		status:   view.StatusNone,
 	})
 }
 
-func (s *serviceListCacheImpl) addService(namespace string, workspaceId string, service view.Service) {
+func (s *serviceListCacheImpl) isRunCurrent(namespace string, workspaceId string, runId uint64) bool {
+	s.cacheMutex.Lock()
+	defer s.cacheMutex.Unlock()
+
+	val, exists := s.cache.Peek(getNamespaceWithWorkspaceId(namespace, workspaceId))
+	return exists && val.(*serviceCacheEntry).runId == runId
+}
+
+func (s *serviceListCacheImpl) addService(namespace string, workspaceId string, runId uint64, service view.Service) bool {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
 
@@ -84,21 +131,25 @@ func (s *serviceListCacheImpl) addService(namespace string, workspaceId string, 
 
 	val, exists := s.cache.Peek(id)
 	if !exists {
-		s.cache.Store(id, &serviceCacheEntry{
-			services: []view.Service{service},
-		})
-		return
+		log.Debugf("Discarding service %s for namespace %s and workspaceId %s: cache entry is gone", service.Id, namespace, workspaceId)
+		return false
 	}
 
 	entry := val.(*serviceCacheEntry)
+	if entry.runId != runId {
+		log.Debugf("Discarding service %s for namespace %s and workspaceId %s: discovery run %d was superseded by %d", service.Id, namespace, workspaceId, runId, entry.runId)
+		return false
+	}
+
 	entry.services = append(entry.services, service)
 
 	sort.Slice(entry.services, func(i, j int) bool {
 		return entry.services[i].Name < entry.services[j].Name
 	})
+	return true
 }
 
-func (s *serviceListCacheImpl) setResultStatus(namespace string, workspaceId string, status view.StatusEnum, details string) {
+func (s *serviceListCacheImpl) setResultStatus(namespace string, workspaceId string, runId uint64, status view.StatusEnum, details string) {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
 
@@ -111,6 +162,10 @@ func (s *serviceListCacheImpl) setResultStatus(namespace string, workspaceId str
 	}
 
 	entry := val.(*serviceCacheEntry)
+	if entry.runId != runId {
+		log.Debugf("Discarding status %s for namespace %s and workspaceId %s: discovery run %d was superseded by %d", status, namespace, workspaceId, runId, entry.runId)
+		return
+	}
 	if entry.status == view.StatusRunning {
 		entry.status = status
 		entry.details = details

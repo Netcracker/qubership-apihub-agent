@@ -1,6 +1,7 @@
 package generic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -18,8 +19,8 @@ import (
 )
 
 type DiscoveryRunner interface {
-	DiscoverDocuments(baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error)
-	GetDocumentsByRefs(baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error)
+	DiscoverDocuments(ctx context.Context, baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error)
+	GetDocumentsByRefs(ctx context.Context, baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error)
 	FilterRefsForApiType(refs []view.DocumentRef) []view.DocumentRef
 	GetName() string
 }
@@ -29,9 +30,9 @@ const ConfigNameField = "name"
 const ConfigXApiKindField = "x-api-kind"
 const ConfigUrlsField = "urls"
 
-func GetRefsFromConfig(baseUrl string, configUrl string, timeout time.Duration) ([]view.DocumentRef, *view.EndpointCallInfo) {
+func GetRefsFromConfig(ctx context.Context, baseUrl string, configUrl string, timeout time.Duration) ([]view.DocumentRef, *view.EndpointCallInfo) {
 	specRefs := make([]view.DocumentRef, 0)
-	spec, _, err := GetGenericObjectFromUrl(baseUrl+configUrl, timeout) // TODO: refactor??
+	spec, _, err := GetGenericObjectFromUrl(ctx, baseUrl+configUrl, timeout) // TODO: refactor??
 	if err != nil {
 		log.Debugf("Failed to read spec from %v: %v", baseUrl+configUrl, err.Error())
 		var statusCode int
@@ -81,7 +82,7 @@ func GetRefsFromConfig(baseUrl string, configUrl string, timeout time.Duration) 
 	return specRefs, nil
 }
 
-func GetAnyDocsByRefs(baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
+func GetAnyDocsByRefs(ctx context.Context, baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
 	if len(refs) == 0 {
 		return nil, nil, nil
 	}
@@ -111,7 +112,7 @@ func GetAnyDocsByRefs(baseUrl string, refs []view.DocumentRef, configPath string
 
 			fullUrl := baseUrl + url
 
-			data, err := client.GetRawDocumentFromUrl(fullUrl, string(ref.ApiType), ref.Timeout)
+			data, err := client.GetRawDocumentFromUrl(ctx, fullUrl, string(ref.ApiType), ref.Timeout)
 			if err != nil {
 				log.Debugf("Failed to get document from url %s: %s", fullUrl, err)
 				var statusCode int
@@ -151,8 +152,8 @@ func GetAnyDocsByRefs(baseUrl string, refs []view.DocumentRef, configPath string
 	return utils.FilterResultDocuments(result), utils.FilterFailedEndpointCalls(failedCalls), utils.FilterResultErrors(errors)
 }
 
-func GetGenericObjectFromUrl(url string, timeout time.Duration) (view.JsonMap, string, error) {
-	specBytes, err := client.GetRawDocumentFromUrl(url, string(view.ATRest), timeout)
+func GetGenericObjectFromUrl(ctx context.Context, url string, timeout time.Duration) (view.JsonMap, string, error) {
+	specBytes, err := client.GetRawDocumentFromUrl(ctx, url, string(view.ATRest), timeout)
 	if err != nil {
 		return nil, "", err
 	}

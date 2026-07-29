@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"context"
 	"time"
 
 	"github.com/Netcracker/qubership-apihub-agent/api_type/generic"
@@ -15,13 +16,13 @@ func NewMarkdownDiscoveryRunner() generic.DiscoveryRunner {
 type markdownDiscoveryRunner struct {
 }
 
-func (m markdownDiscoveryRunner) DiscoverDocuments(baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error) {
+func (m markdownDiscoveryRunner) DiscoverDocuments(ctx context.Context, baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error) {
 	// No default paths for this type
 	return []view.Document{}, nil, nil
 }
 
-func (m markdownDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
-	return generic.GetAnyDocsByRefs(baseUrl, m.FilterRefsForApiType(refs), configPath)
+func (m markdownDiscoveryRunner) GetDocumentsByRefs(ctx context.Context, baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
+	return generic.GetAnyDocsByRefs(ctx, baseUrl, m.FilterRefsForApiType(refs), configPath)
 }
 
 func (m markdownDiscoveryRunner) FilterRefsForApiType(refs []view.DocumentRef) []view.DocumentRef {

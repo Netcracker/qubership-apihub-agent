@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,18 +28,18 @@ type graphqlDiscoveryRunner struct {
 const DefaultGraphqlSpecName = "Graphql specification"
 const DefaultGraphqlIntSpecName = "Graphql introspection"
 
-func (r graphqlDiscoveryRunner) DiscoverDocuments(baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error) {
+func (r graphqlDiscoveryRunner) DiscoverDocuments(ctx context.Context, baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error) {
 	var allFailedCalls []view.EndpointCallInfo
 
 	// Check for GraphQL config first
 	for _, url := range urls.GraphqlConfig {
-		configRefs, failedCall := getRefsFromGraphqlConfig(baseUrl, url, timeout)
+		configRefs, failedCall := getRefsFromGraphqlConfig(ctx, baseUrl, url, timeout)
 		if failedCall != nil {
 			allFailedCalls = append(allFailedCalls, *failedCall)
 		}
 		if len(configRefs) > 0 {
 			// Graphql config found
-			docs, failedCalls, err := r.GetDocumentsByRefs(baseUrl, configRefs, url)
+			docs, failedCalls, err := r.GetDocumentsByRefs(ctx, baseUrl, configRefs, url)
 			allFailedCalls = append(allFailedCalls, failedCalls...)
 			return docs, allFailedCalls, err
 		}
@@ -52,12 +53,12 @@ func (r graphqlDiscoveryRunner) DiscoverDocuments(baseUrl string, urls view.Docu
 	for _, url := range urls.GraphqlIntrospection {
 		refs = append(refs, view.DocumentRef{Url: url, ApiType: view.ATGraphql, Required: false, Timeout: timeout}) //TODO: Metadata: map[string]interface{}{"isIntrospection": true} ???
 	}
-	docs, failedCalls, err := r.GetDocumentsByRefs(baseUrl, refs, "")
+	docs, failedCalls, err := r.GetDocumentsByRefs(ctx, baseUrl, refs, "")
 	allFailedCalls = append(allFailedCalls, failedCalls...)
 	return docs, allFailedCalls, err
 }
 
-func (r graphqlDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
+func (r graphqlDiscoveryRunner) GetDocumentsByRefs(ctx context.Context, baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
 	filteredRefs := r.FilterRefsForApiType(refs) // take only appropriate api type
 	if len(filteredRefs) == 0 {
 		return nil, nil, nil
@@ -84,11 +85,11 @@ func (r graphqlDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.D
 
 			var name, format, fileId string
 
-			err := checkGraphqlIntrospection(url, ref.Timeout)
+			err := checkGraphqlIntrospection(ctx, url, ref.Timeout)
 			if err != nil {
 				log.Debugf("Failed to read graphql introspection from %v: %v", url, err.Error())
 
-				err := checkGraphqlSpec(url, ref.Timeout)
+				err := checkGraphqlSpec(ctx, url, ref.Timeout)
 				if err != nil {
 					log.Debugf("Failed to read graphql spec from %v: %v", url, err.Error())
 					var customErr *exception.CustomError
@@ -149,9 +150,9 @@ func (r graphqlDiscoveryRunner) GetName() string {
 	return "graphql"
 }
 
-func getGraphqlIntrospectionFromUrl(url string, timeout time.Duration) (view.JsonMap, error) {
+func getGraphqlIntrospectionFromUrl(ctx context.Context, url string, timeout time.Duration) (view.JsonMap, error) {
 	log.Debugf("Sending graphql introspection discovery request to %s", url)
-	specBytes, err := client.GetRawGraphqlIntrospectionFromUrl(url, timeout)
+	specBytes, err := client.GetRawGraphqlIntrospectionFromUrl(ctx, url, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -163,17 +164,17 @@ func getGraphqlIntrospectionFromUrl(url string, timeout time.Duration) (view.Jso
 	return spec, nil
 }
 
-func getGraphqlSpecFromUrl(url string, timeout time.Duration) ([]byte, error) {
+func getGraphqlSpecFromUrl(ctx context.Context, url string, timeout time.Duration) ([]byte, error) {
 	log.Debugf("Sending graphql spec discovery request to %s", url)
-	specBytes, err := client.GetRawDocumentFromUrl(url, string(view.ATGraphql), timeout)
+	specBytes, err := client.GetRawDocumentFromUrl(ctx, url, string(view.ATGraphql), timeout)
 	if err != nil {
 		return nil, err
 	}
 	return specBytes, nil
 }
 
-func checkGraphqlIntrospection(specUrl string, timeout time.Duration) error {
-	spec, err := getGraphqlIntrospectionFromUrl(specUrl, timeout)
+func checkGraphqlIntrospection(ctx context.Context, specUrl string, timeout time.Duration) error {
+	spec, err := getGraphqlIntrospectionFromUrl(ctx, specUrl, timeout)
 	if err != nil {
 		return fmt.Errorf("failed to get graphql introspection from '%v': %v", specUrl, err.Error())
 	}
@@ -185,8 +186,8 @@ func checkGraphqlIntrospection(specUrl string, timeout time.Duration) error {
 	return fmt.Errorf("incorrect graphql introspection found at url `%v`", specUrl)
 }
 
-func checkGraphqlSpec(specUrl string, timeout time.Duration) error {
-	spec, err := getGraphqlSpecFromUrl(specUrl, timeout)
+func checkGraphqlSpec(ctx context.Context, specUrl string, timeout time.Duration) error {
+	spec, err := getGraphqlSpecFromUrl(ctx, specUrl, timeout)
 	if err != nil {
 		return fmt.Errorf("failed to get graphql specification from '%v': %w", specUrl, err)
 	}
@@ -208,9 +209,9 @@ const GraphqlConfigUrlField = "url"
 const GraphqlConfigUrlsField = "urls"
 const GraphqlConfigNameField = "name"
 
-func getRefsFromGraphqlConfig(baseUrl string, graphqlConfigUrl string, timeout time.Duration) ([]view.DocumentRef, *view.EndpointCallInfo) {
+func getRefsFromGraphqlConfig(ctx context.Context, baseUrl string, graphqlConfigUrl string, timeout time.Duration) ([]view.DocumentRef, *view.EndpointCallInfo) {
 	graphqlSpecRefs := make([]view.DocumentRef, 0)
-	spec, _, err := generic.GetGenericObjectFromUrl(baseUrl+graphqlConfigUrl, timeout) // TODO: refactor
+	spec, _, err := generic.GetGenericObjectFromUrl(ctx, baseUrl+graphqlConfigUrl, timeout) // TODO: refactor
 	if err != nil {
 		log.Debugf("Failed to read json spec from %v: %v", baseUrl+graphqlConfigUrl, err.Error())
 		var statusCode int

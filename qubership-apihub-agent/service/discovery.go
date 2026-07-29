@@ -24,7 +24,7 @@ import (
 )
 
 type DiscoveryService interface {
-	StartDiscovery(ctx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool) error
+	StartDiscovery(ctx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool, req view.DiscoveryRequest) error
 	GetServiceUrl(namespace string, serviceId string) (string, error)
 }
 
@@ -75,7 +75,7 @@ type discoveryServiceImpl struct {
 	apihubClient              client.ApihubClient
 }
 
-func (d discoveryServiceImpl) StartDiscovery(ctx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool) error {
+func (d discoveryServiceImpl) StartDiscovery(ctx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool, req view.DiscoveryRequest) error {
 	exists, err := d.namespaceListCache.NamespaceExists(namespace)
 	if err != nil {
 		return err
@@ -90,17 +90,29 @@ func (d discoveryServiceImpl) StartDiscovery(ctx secctx.SecurityContext, namespa
 		}
 	}
 
-	d.serviceListCache.handleDiscoveryStart(namespace, workspaceId)
+	runId, started := d.serviceListCache.handleDiscoveryStart(namespace, workspaceId, req.Services)
+	if !started {
+		//TODO: discuss it
+		return &exception.CustomError{
+			Status:  http.StatusConflict,
+			Code:    exception.DiscoveryAlreadyRunning,
+			Message: exception.DiscoveryAlreadyRunningMsg,
+			Params:  map[string]interface{}{"namespace": namespace, "workspaceId": workspaceId},
+		}
+	}
+
 	utils.SafeAsync(func() {
-		d.runDiscovery(ctx, namespace, workspaceId, failOnError)
+		d.runDiscovery(ctx, namespace, workspaceId, failOnError, runId, req.Services)
 	})
 	return nil
 }
 
-func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool) {
+func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool, runId uint64, requestedServices []string) {
 	log.Infof("Starting discovery for namespace %s", namespace)
 	start := time.Now()
-	ctx := goctx.Background()
+
+	ctx, cancel := goctx.WithCancel(goctx.Background())
+	defer cancel()
 
 	wg := sync.WaitGroup{}
 
@@ -131,21 +143,33 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 	wg.Wait()
 
 	if svcErr != nil {
-		d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusError, svcErr.Error())
+		d.serviceListCache.setResultStatus(namespace, workspaceId, runId, view.StatusError, svcErr.Error())
 		log.Errorf("Failed to list k8s services in namespace %s: %s", namespace, svcErr.Error())
 		return
 	}
 
 	if podsErr != nil {
-		d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusError, podsErr.Error())
+		d.serviceListCache.setResultStatus(namespace, workspaceId, runId, view.StatusError, podsErr.Error())
 		log.Errorf("Failed to list k8s pods in namespace %s: %s", namespace, podsErr.Error())
 		return
 	}
 
 	if deploymentsErr != nil {
-		d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusError, podsErr.Error())
-		log.Errorf("Failed to list k8s deployments in namespace %s: %s", namespace, podsErr.Error())
+		d.serviceListCache.setResultStatus(namespace, workspaceId, runId, view.StatusError, deploymentsErr.Error())
+		log.Errorf("Failed to list k8s deployments in namespace %s: %s", namespace, deploymentsErr.Error())
 		return
+	}
+
+	if !d.serviceListCache.isRunCurrent(namespace, workspaceId, runId) {
+		log.Infof("Discovery run %d for namespace %s was superseded, stopping before service probing", runId, namespace)
+		return
+	}
+
+	if len(requestedServices) > 0 {
+		total := len(services)
+		//TODO: what to do if a requested service is not found in services list ?
+		services = filterRequestedServices(services, requestedServices)
+		log.Infof("Discovery for namespace %s is limited to %d requested service(s): %d of %d k8s services matched", namespace, len(requestedServices), len(services), total)
 	}
 
 	agentId := utils.MakeAgentId(d.cloudName, d.agentNamespace)
@@ -192,8 +216,9 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 					// Looks like the namespace is in deployment/restart phase.
 					// In this case discovery result will not be completely correct, so returning the error.
 					errMsg := fmt.Sprintf("no pod is up yet for service: %s", srv.Name)
-					d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusError, errMsg)
+					d.serviceListCache.setResultStatus(namespace, workspaceId, runId, view.StatusError, errMsg)
 					log.Error(errMsg)
+					cancel()
 					return
 				}
 			}
@@ -205,8 +230,14 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 		wg.Add(1)
 
 		utils.SafeAsync(func() {
+			defer wg.Done()
+
+			if ctx.Err() != nil {
+				return
+			}
+
 			serviceId := srvTmp.Name
-			serviceName := getServiceName(serviceId, annotations)
+			serviceName := getServiceName(serviceId)
 			baseUrl := buildBaseurl(srvTmp)
 
 			var discoveryResult *view.DiscoveryResult
@@ -219,7 +250,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 			utils.SafeAsync(func() {
 				defer srvWg.Done()
 
-				discoveryResult, docErr = d.documentsDiscoveryService.RetrieveDocuments(baseUrl, serviceName, discoveryUrls)
+				discoveryResult, docErr = d.documentsDiscoveryService.RetrieveDocuments(ctx, baseUrl, serviceName, discoveryUrls)
 				if docErr != nil {
 					log.Errorf("Service %s have errors during discovery: %s", serviceName, docErr)
 				}
@@ -229,7 +260,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 
 			utils.SafeAsync(func() {
 				defer srvWg.Done()
-				baselinePackage, err := d.apihubClient.GetPackageByServiceName(secCtx, workspaceId, serviceName) // name here, not id!
+				baselinePackage, err := d.apihubClient.GetPackageByServiceName(ctx, secCtx, workspaceId, serviceName) // name here, not id!
 				if err != nil {
 					log.Errorf("failed to get baseline for %s: %s", serviceName, err)
 				}
@@ -238,7 +269,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 					versions := make([]string, 0)
 
 					defaultVersion := baselinePackage.DefaultReleaseVersion
-					versionsResp, err := d.apihubClient.GetVersions(secCtx, baselinePackage.Id, 0, 100)
+					versionsResp, err := d.apihubClient.GetVersions(ctx, secCtx, baselinePackage.Id, 0, 100)
 					if err != nil {
 						log.Warnf("failed to get baseline %s versions: %s", baselinePackage.Id, err)
 					} else {
@@ -303,8 +334,12 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 				Error:          errorStr,
 				DiagnosticInfo: diagnostic,
 			}
-			d.serviceListCache.addService(namespace, workspaceId, srvToAdd)
-			wg.Done()
+			if !d.serviceListCache.addService(namespace, workspaceId, runId, srvToAdd) {
+				// The entry belongs to a newer run now, so this one has nothing left
+				// to write. Cancel so the sibling probes stop too.
+				log.Infof("Discovery run %d for namespace %s was superseded, cancelling", runId, namespace)
+				cancel()
+			}
 		})
 	}
 
@@ -312,7 +347,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 
 	log.Infof("Discovery for namespace %s took %dms", namespace, time.Since(start).Milliseconds())
 
-	d.serviceListCache.setResultStatus(namespace, workspaceId, view.StatusComplete, "")
+	d.serviceListCache.setResultStatus(namespace, workspaceId, runId, view.StatusComplete, "")
 }
 
 func getPodsForSelector(allPods []entity.Pod, selector map[string]string) []entity.Pod {
@@ -371,10 +406,30 @@ func getAllAnnotationsForService(service entity.Service) map[string]string {
 	return result
 }
 
+// filterRequestedServices narrows the k8s service list to the requested services.
+// Requested names are matched against the blue-green-normalised name. An empty request means no filter.
+func filterRequestedServices(services []entity.Service, requestedServices []string) []entity.Service {
+	if len(requestedServices) == 0 {
+		return services
+	}
+
+	requested := make(map[string]struct{}, len(requestedServices))
+	for _, name := range requestedServices {
+		requested[name] = struct{}{}
+	}
+
+	filtered := make([]entity.Service, 0, len(services))
+	for _, srv := range services {
+		if _, ok := requested[getServiceName(srv.Name)]; ok {
+			filtered = append(filtered, srv)
+		}
+	}
+	return filtered
+}
+
 var bgRegexp = regexp.MustCompile(`(.*?)-v\d+$`)
 
-// Extract service name from blue-green name
-func getServiceName(nameFromKuber string, annotations map[string]string) string {
+func getServiceName(nameFromKuber string) string {
 	if bgRegexp.MatchString(nameFromKuber) {
 		res := bgRegexp.FindStringSubmatch(nameFromKuber)
 		if len(res) < 2 {

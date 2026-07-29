@@ -15,6 +15,7 @@
 package asyncapi
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -39,12 +40,12 @@ func NewAsyncAPIDiscoveryRunner() generic.DiscoveryRunner {
 type asyncAPIDiscoveryRunner struct {
 }
 
-func (r asyncAPIDiscoveryRunner) DiscoverDocuments(baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error) {
+func (r asyncAPIDiscoveryRunner) DiscoverDocuments(ctx context.Context, baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error) {
 	refs := utils.MakeDocumentRefsFromUrls(urls.AsyncAPI, view.ATAsyncAPI, false, timeout)
-	return r.GetDocumentsByRefs(baseUrl, refs, "")
+	return r.GetDocumentsByRefs(ctx, baseUrl, refs, "")
 }
 
-func (r asyncAPIDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
+func (r asyncAPIDiscoveryRunner) GetDocumentsByRefs(ctx context.Context, baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
 	filteredRefs := r.FilterRefsForApiType(refs) // take only appropriate api type
 	if len(filteredRefs) == 0 {
 		return nil, nil, nil
@@ -69,7 +70,7 @@ func (r asyncAPIDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.
 
 			url := baseUrl + currentSpecUrl
 
-			specVersion, specTitle, specFormat, failedCall := getAsyncAPISpecInfo(url, currentSpecUrl, ref.Timeout)
+			specVersion, specTitle, specFormat, failedCall := getAsyncAPISpecInfo(ctx, url, currentSpecUrl, ref.Timeout)
 			if failedCall != nil {
 				log.Debugf("Failed to read asyncapi spec from %s: %s", url, failedCall.ErrorSummary)
 				failedCalls[i] = *failedCall
@@ -106,8 +107,8 @@ func (r asyncAPIDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.
 	return utils.FilterResultDocuments(result), utils.FilterFailedEndpointCalls(failedCalls), utils.FilterResultErrors(errors)
 }
 
-func getAsyncAPISpecInfo(specUrl string, relativePath string, timeout time.Duration) (string, string, string, *view.EndpointCallInfo) {
-	spec, specFormat, err := generic.GetGenericObjectFromUrl(specUrl, timeout)
+func getAsyncAPISpecInfo(ctx context.Context, specUrl string, relativePath string, timeout time.Duration) (string, string, string, *view.EndpointCallInfo) {
+	spec, specFormat, err := generic.GetGenericObjectFromUrl(ctx, specUrl, timeout)
 	if err != nil {
 		var statusCode int
 		if customError, ok := err.(*exception.CustomError); ok {
