@@ -176,7 +176,11 @@ paths:
         Returns discovered services and the overall discovery status with per-service diagnostics.
         See the `status` field in the response (`none`, `running`, `complete`, `error`).
         Start discovery via `POST /v2/namespaces/{name}/workspaces/{workspaceId}/discover`.
+        Each distinct services list passed to the discovery request has its own stored result;
+        use the `services` query parameter to address the result of a scoped discovery.
       operationId: getNamespaceServicesV3
+      parameters:
+        - $ref: "#/components/parameters/RequestedServices"
       tags:
         - Cloud Services
       responses:
@@ -208,8 +212,8 @@ paths:
                     type: string
                   requestedServices:
                     description: |
-                      The services list supplied when the discovery process was started.
-                      Absent when the process was started without a request body, meaning the whole namespace was discovered.
+                      The services list the addressed discovery result was started with.
+                      Absent on the default (unscoped) result, where the whole namespace was discovered.
                       Compare it against `services[].serviceName` to find requested services that were not found in the namespace.
                     type: array
                     items:
@@ -231,8 +235,12 @@ paths:
       summary: Start discovery process
       description: |
         Starts an asynchronous service discovery process.
-        No process ID is returned; retrieve process status via getServices.
-        At most one discovery process is active per namespace and workspace; starting another while one is running returns 409.
+        No process ID is returned; retrieve the result via getServices, passing the same services list.
+        Shares an implementation with postNamespaceDiscoverV2, so it accepts the same optional request body.
+        Each distinct services list has its own stored result: discoveries with different lists run and are stored
+        independently, and starting a discovery again with the same list resets and rebuilds that list's result.
+        An absent body, or an absent or empty services list, discovers the whole namespace and stores the result
+        as the default (unscoped) one.
       requestBody:
         required: false
         description: Optional discovery scope. Omit the body entirely to discover the whole namespace.
@@ -246,8 +254,6 @@ paths:
           content: {}
         "400":
           $ref: "#/components/responses/badRequest400"
-        "409":
-          $ref: "#/components/responses/conflict409"
         "500":
           $ref: "#/components/responses/internalServerError500"
         "503":
@@ -263,8 +269,12 @@ paths:
       summary: Start discovery process
       description: |
         Starts an asynchronous service discovery process.
-        No process ID is returned; retrieve process status via getServices.
-        At most one discovery process is active per namespace and workspace; starting another while one is running returns 409.
+        No process ID is returned; retrieve the result via getServices, passing the same services list.
+        Pass a request body to limit the discovery scope to a well-known list of services.
+        Each distinct services list has its own stored result: discoveries with different lists run and are stored
+        independently, and starting a discovery again with the same list resets and rebuilds that list's result.
+        An absent body, or an absent or empty services list, discovers the whole namespace and stores the result
+        as the default (unscoped) one.
       requestBody:
         required: false
         description: Optional discovery scope. Omit the body entirely to discover the whole namespace.
@@ -278,8 +288,6 @@ paths:
           content: {}
         "400":
           $ref: "#/components/responses/badRequest400"
-        "409":
-          $ref: "#/components/responses/conflict409"
         "500":
           $ref: "#/components/responses/internalServerError500"
         "503":
@@ -332,6 +340,8 @@ paths:
       operationId: getNamespaceServicesIdSpecsIdV2
       tags:
         - Cloud Services
+      parameters:
+        - $ref: "#/components/parameters/RequestedServices"
       responses:
         "200":
           description: Successful operation
@@ -604,6 +614,24 @@ components:
       required: true
       schema:
         type: string
+    RequestedServices:
+      name: services
+      in: query
+      required: false
+      description: |
+        Comma-separated list of service names identifying which discovery result to address.
+        Pass the same list that was sent in the discovery request body to read that discovery's result;
+        documents discovered by a scoped discovery must also be downloaded with the same list.
+        The list is treated as a set: order and duplicates do not affect which result is addressed.
+        When absent or empty, the default (unscoped) discovery result is addressed.
+        A result that was never produced for the given list has status `none`.
+      style: form
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+      example: ["apihub-be", "apihub-fe"]
   schemas:
     SpecificationType:
       title: type
@@ -1001,22 +1029,26 @@ components:
     DiscoveryRequest:
       description: |
         Optional body of a discovery request, used to limit the discovery scope to a well-known list of services.
-        Omit the body entirely to discover every service in the namespace. Once a body is sent, `services` is mandatory
-        and must not be empty, so that a mistyped field cannot silently widen the scope back to the whole namespace.
+        An absent body, or an absent or empty services list, discovers every service in the namespace and stores
+        the result as the default (unscoped) one - the previous behaviour.
+        Each distinct services list has its own stored result; the list is treated as a set, so order and duplicates
+        do not affect which result the discovery writes to.
       type: object
       properties:
         services:
           description: |
             Service names to discover. Each entry is matched, exactly and case-sensitively, against the service name
-            reported as `serviceName` in the getServices response — that is, the Kubernetes service name with any
+            reported as `serviceName` in the getServices response - that is, the Kubernetes service name with any
             trailing blue-green `-v<N>` suffix removed. It is the same name used to resolve the APIHUB baseline package.
+            One entry therefore selects every blue-green variant of that service: `apihub-be` matches both
+            `apihub-be-v1` and `apihub-be-v2`. A raw Kubernetes service name such as `apihub-be-v1` matches nothing,
+            so do not pass the `id` field of a previous response here. Names not present in the namespace are ignored:
+            discovery is asynchronous, so compare `requestedServices` against `services[].serviceName` in the
+            getServices response to find them.
           type: array
-          minItems: 1
           items:
             type: string
           example: ["apihub-be", "apihub-fe"]
-      required:
-        - services
     ErrorResponse:
       description: Standard error response envelope returned for failed requests. Includes HTTP status, internal error code, and human-readable message; params and debug are optional.
       type: object
@@ -1057,17 +1089,7 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     badRequest400:
       description: |
-        The request could not be processed. Typical causes are a malformed JSON body, a body larger than 1 MiB,
-        or a discovery request body whose `services` list is missing or empty.
-        The response body follows the ErrorResponse schema.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
-    conflict409:
-      description: |
-        A discovery process is already running for this namespace and workspace.
-        Poll getServices until its status is no longer `running`, then retry.
+        The request could not be processed. Typical causes are a malformed JSON body or a body larger than 1 MiB.
         The response body follows the ErrorResponse schema.
       content:
         application/json:
