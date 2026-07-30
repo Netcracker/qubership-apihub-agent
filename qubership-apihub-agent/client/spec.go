@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,14 +11,14 @@ import (
 	"github.com/Netcracker/qubership-apihub-agent/utils"
 )
 
-func GetRawGraphqlIntrospectionFromUrl(ctx context.Context, url string, timeout time.Duration) ([]byte, error) {
+func GetRawGraphqlIntrospectionFromUrl(url string, timeout time.Duration) ([]byte, error) {
 	client, err := utils.MakeDiscoveryHttpClient(timeout)
 	if err != nil {
 		return nil, err
 	}
 
 	start := time.Now()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -49,17 +48,13 @@ func GetRawGraphqlIntrospectionFromUrl(ctx context.Context, url string, timeout 
 	return bytes, nil
 }
 
-func GetRawDocumentFromUrl(ctx context.Context, url, documentType string, timeout time.Duration) ([]byte, error) {
+func GetRawDocumentFromUrl(url, documentType string, timeout time.Duration) ([]byte, error) {
 	client, err := utils.MakeDiscoveryHttpClient(timeout)
 	if err != nil {
 		return nil, err
 	}
 	start := time.Now()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
+	resp, err := client.Get(url)
 	if err != nil {
 		utils.PerfLog(time.Since(start).Milliseconds(), timeout.Milliseconds()+500, fmt.Sprintf("Get raw document from URL %s with err %s", url, err))
 		return nil, err

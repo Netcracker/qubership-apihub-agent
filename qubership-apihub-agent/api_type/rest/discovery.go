@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -22,31 +21,31 @@ func NewRestDiscoveryRunner() generic.DiscoveryRunner {
 type restDiscoveryRunner struct {
 }
 
-func (r restDiscoveryRunner) DiscoverDocuments(ctx context.Context, baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error) {
+func (r restDiscoveryRunner) DiscoverDocuments(baseUrl string, urls view.DocumentDiscoveryUrls, timeout time.Duration) ([]view.Document, []view.EndpointCallInfo, error) {
 	var allFailedCalls []view.EndpointCallInfo
 
 	// find swagger-config, etc..
 	var refs []view.DocumentRef
 	for _, url := range urls.SwaggerConfig {
-		refs, failedCall := getRefsFromSwaggerConfig(ctx, baseUrl, url, timeout)
+		refs, failedCall := getRefsFromSwaggerConfig(baseUrl, url, timeout)
 		if failedCall != nil {
 			allFailedCalls = append(allFailedCalls, *failedCall)
 		}
 		if len(refs) > 0 {
 			// Swagger config found
-			docs, failedCalls, err := r.GetDocumentsByRefs(ctx, baseUrl, refs, url)
+			docs, failedCalls, err := r.GetDocumentsByRefs(baseUrl, refs, url)
 			allFailedCalls = append(allFailedCalls, failedCalls...)
 			return docs, allFailedCalls, err
 		}
 	}
 	// Swagger config not found, generate refs list from openapi urls
 	refs = utils.MakeDocumentRefsFromUrls(urls.Openapi, view.ATRest, false, timeout)
-	docs, failedCalls, err := r.GetDocumentsByRefs(ctx, baseUrl, refs, "")
+	docs, failedCalls, err := r.GetDocumentsByRefs(baseUrl, refs, "")
 	allFailedCalls = append(allFailedCalls, failedCalls...)
 	return docs, allFailedCalls, err
 }
 
-func (r restDiscoveryRunner) GetDocumentsByRefs(ctx context.Context, baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
+func (r restDiscoveryRunner) GetDocumentsByRefs(baseUrl string, refs []view.DocumentRef, configPath string) ([]view.Document, []view.EndpointCallInfo, error) {
 	filteredRefs := r.FilterRefsForApiType(refs) // take only appropriate api type
 	if len(filteredRefs) == 0 {
 		return nil, nil, nil
@@ -71,7 +70,7 @@ func (r restDiscoveryRunner) GetDocumentsByRefs(ctx context.Context, baseUrl str
 
 			url := baseUrl + currentSpecUrl
 
-			specVersion, specTitle, specFormat, failedCall := getSpecVersionAndTitleFromDoc(ctx, url, currentSpecUrl, ref.Timeout)
+			specVersion, specTitle, specFormat, failedCall := getSpecVersionAndTitleFromDoc(url, currentSpecUrl, ref.Timeout)
 			if failedCall != nil {
 				log.Debugf("Failed to read openapi spec from %s: %s", url, failedCall.ErrorSummary)
 				failedCalls[i] = *failedCall
@@ -115,8 +114,8 @@ var openapi2Regexp = regexp.MustCompile(`2.*`)
 
 const DefaultOpenapiSpecName = "default"
 
-func getRefsFromSwaggerConfig(ctx context.Context, baseUrl string, swaggerConfigUrl string, timeout time.Duration) ([]view.DocumentRef, *view.EndpointCallInfo) {
-	swaggerSpecRefs, failedCall := generic.GetRefsFromConfig(ctx, baseUrl, swaggerConfigUrl, timeout)
+func getRefsFromSwaggerConfig(baseUrl string, swaggerConfigUrl string, timeout time.Duration) ([]view.DocumentRef, *view.EndpointCallInfo) {
+	swaggerSpecRefs, failedCall := generic.GetRefsFromConfig(baseUrl, swaggerConfigUrl, timeout)
 	if failedCall != nil {
 		return nil, failedCall
 	}
@@ -127,8 +126,8 @@ func getRefsFromSwaggerConfig(ctx context.Context, baseUrl string, swaggerConfig
 	return swaggerSpecRefs, nil
 }
 
-func getSpecVersionAndTitleFromDoc(ctx context.Context, specUrl string, relativePath string, timeout time.Duration) (string, string, string, *view.EndpointCallInfo) {
-	spec, specFormat, err := generic.GetGenericObjectFromUrl(ctx, specUrl, timeout)
+func getSpecVersionAndTitleFromDoc(specUrl string, relativePath string, timeout time.Duration) (string, string, string, *view.EndpointCallInfo) {
+	spec, specFormat, err := generic.GetGenericObjectFromUrl(specUrl, timeout)
 	if err != nil {
 		var statusCode int
 		if customError, ok := err.(*exception.CustomError); ok {

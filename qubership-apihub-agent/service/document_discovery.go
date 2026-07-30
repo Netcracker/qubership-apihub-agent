@@ -1,11 +1,9 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"sync"
 
 	"time"
@@ -23,7 +21,7 @@ import (
 )
 
 type DocumentsDiscoveryService interface {
-	RetrieveDocuments(ctx context.Context, baseUrl string, serviceName string, urls view.DocumentDiscoveryUrls) (*view.DiscoveryResult, error)
+	RetrieveDocuments(baseUrl string, serviceName string, urls view.DocumentDiscoveryUrls) (*view.DiscoveryResult, error)
 }
 
 const ConfigUrlField = "url"
@@ -52,11 +50,11 @@ type documentsDiscoveryServiceImpl struct {
 	discoveryTimeout time.Duration
 }
 
-func (d documentsDiscoveryServiceImpl) RetrieveDocuments(ctx context.Context, baseUrl string, serviceName string, urls view.DocumentDiscoveryUrls) (*view.DiscoveryResult, error) {
+func (d documentsDiscoveryServiceImpl) RetrieveDocuments(baseUrl string, serviceName string, urls view.DocumentDiscoveryUrls) (*view.DiscoveryResult, error) {
 	// check apihub config first
 	var refsFromApihubConfig []view.DocumentRef
 
-	apihubConfig, configPath, apihubConfigFailedCalls := getApihubConfigFromUrls(ctx, baseUrl, urls.ApihubConfig, d.discoveryTimeout)
+	apihubConfig, configPath, apihubConfigFailedCalls := getApihubConfigFromUrls(baseUrl, urls.ApihubConfig, d.discoveryTimeout)
 	if apihubConfig != nil {
 		refsFromApihubConfig = getDocumentRefsFromApihubConfig(apihubConfig, d.discoveryTimeout*3) // We know that this endpoint should contain the spec, so it's not a guess, increase timeout
 	}
@@ -82,9 +80,9 @@ func (d documentsDiscoveryServiceImpl) RetrieveDocuments(ctx context.Context, ba
 			var err error
 
 			if len(refsFromApihubConfig) > 0 {
-				docs, failedCalls, err = runner.GetDocumentsByRefs(ctx, baseUrl, refsFromApihubConfig, configPath) // just get documents from known urls
+				docs, failedCalls, err = runner.GetDocumentsByRefs(baseUrl, refsFromApihubConfig, configPath) // just get documents from known urls
 			} else {
-				docs, failedCalls, err = runner.DiscoverDocuments(ctx, baseUrl, urls, d.discoveryTimeout)
+				docs, failedCalls, err = runner.DiscoverDocuments(baseUrl, urls, d.discoveryTimeout)
 			}
 
 			docsMutex.Lock()
@@ -173,7 +171,7 @@ func getDocumentRefsFromApihubConfig(apihubConfig view.JsonMap, timeout time.Dur
 	return documentRefs
 }
 
-func getApihubConfigFromUrls(ctx context.Context, baseUrl string, paths []string, timeout time.Duration) (view.JsonMap, string, []view.EndpointCallInfo) {
+func getApihubConfigFromUrls(baseUrl string, paths []string, timeout time.Duration) (view.JsonMap, string, []view.EndpointCallInfo) {
 	client, err := utils.MakeDiscoveryHttpClient(timeout)
 	if err != nil {
 		return nil, "", []view.EndpointCallInfo{{
@@ -185,15 +183,7 @@ func getApihubConfigFromUrls(ctx context.Context, baseUrl string, paths []string
 	for _, path := range paths {
 		url := baseUrl + path
 		log.Debugf("Trying to get apihub config from url: %s", url)
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			failedCalls = append(failedCalls, view.EndpointCallInfo{
-				Path:         path,
-				ErrorSummary: fmt.Sprintf("Failed to build APIHUB config request: %s", err.Error()),
-			})
-			continue
-		}
-		resp, err := client.Do(req)
+		resp, err := client.Get(url)
 		if err != nil {
 			failedCalls = append(failedCalls, view.EndpointCallInfo{
 				Path:         path,

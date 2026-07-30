@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/Netcracker/qubership-apihub-agent/exception"
 	"github.com/Netcracker/qubership-apihub-agent/view"
@@ -76,6 +77,24 @@ func getFailOnErrorQueryParam(r *http.Request) (bool, *exception.CustomError) {
 	return false, nil
 }
 
+func getRequestedServicesQueryParam(r *http.Request) []string {
+	value := r.URL.Query().Get("services")
+	if value == "" {
+		return nil
+	}
+
+	requestedServices := make([]string, 0)
+	for _, serviceName := range strings.Split(value, ",") {
+		if serviceName != "" {
+			requestedServices = append(requestedServices, serviceName)
+		}
+	}
+	if len(requestedServices) == 0 {
+		return nil
+	}
+	return requestedServices
+}
+
 func getDiscoveryRequestBody(w http.ResponseWriter, r *http.Request) (view.DiscoveryRequest, *exception.CustomError) {
 	var req view.DiscoveryRequest
 	if r.Body == nil {
@@ -101,6 +120,17 @@ func getDiscoveryRequestBody(w http.ResponseWriter, r *http.Request) (view.Disco
 			Code:    exception.BadRequestBody,
 			Message: exception.BadRequestBodyMsg,
 			Debug:   err.Error(),
+		}
+	}
+
+	for _, serviceName := range req.Services {
+		if serviceName == "" || strings.TrimSpace(serviceName) != serviceName {
+			return req, &exception.CustomError{
+				Status:  http.StatusBadRequest,
+				Code:    exception.InvalidServiceName,
+				Message: exception.InvalidServiceNameMsg,
+				Params:  map[string]interface{}{"name": serviceName},
+			}
 		}
 	}
 	return req, nil

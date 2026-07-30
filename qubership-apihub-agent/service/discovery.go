@@ -90,29 +90,19 @@ func (d discoveryServiceImpl) StartDiscovery(ctx secctx.SecurityContext, namespa
 		}
 	}
 
-	runId, started := d.serviceListCache.handleDiscoveryStart(namespace, workspaceId, req.Services)
-	if !started {
-		//TODO: discuss it
-		return &exception.CustomError{
-			Status:  http.StatusConflict,
-			Code:    exception.DiscoveryAlreadyRunning,
-			Message: exception.DiscoveryAlreadyRunningMsg,
-			Params:  map[string]interface{}{"namespace": namespace, "workspaceId": workspaceId},
-		}
-	}
+	d.serviceListCache.handleDiscoveryStart(namespace, workspaceId, req.Services)
 
 	utils.SafeAsync(func() {
-		d.runDiscovery(ctx, namespace, workspaceId, failOnError, runId, req.Services)
+		d.runDiscovery(ctx, namespace, workspaceId, failOnError, req.Services)
 	})
 	return nil
 }
 
-func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool, runId uint64, requestedServices []string) {
+func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namespace string, workspaceId string, failOnError bool, requestedServices []string) {
 	log.Infof("Starting discovery for namespace %s", namespace)
 	start := time.Now()
 
-	ctx, cancel := goctx.WithCancel(goctx.Background())
-	defer cancel()
+	ctx := goctx.Background()
 
 	wg := sync.WaitGroup{}
 
@@ -143,31 +133,25 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 	wg.Wait()
 
 	if svcErr != nil {
-		d.serviceListCache.setResultStatus(namespace, workspaceId, runId, view.StatusError, svcErr.Error())
+		d.serviceListCache.setResultStatus(namespace, workspaceId, requestedServices, view.StatusError, svcErr.Error())
 		log.Errorf("Failed to list k8s services in namespace %s: %s", namespace, svcErr.Error())
 		return
 	}
 
 	if podsErr != nil {
-		d.serviceListCache.setResultStatus(namespace, workspaceId, runId, view.StatusError, podsErr.Error())
+		d.serviceListCache.setResultStatus(namespace, workspaceId, requestedServices, view.StatusError, podsErr.Error())
 		log.Errorf("Failed to list k8s pods in namespace %s: %s", namespace, podsErr.Error())
 		return
 	}
 
 	if deploymentsErr != nil {
-		d.serviceListCache.setResultStatus(namespace, workspaceId, runId, view.StatusError, deploymentsErr.Error())
+		d.serviceListCache.setResultStatus(namespace, workspaceId, requestedServices, view.StatusError, deploymentsErr.Error())
 		log.Errorf("Failed to list k8s deployments in namespace %s: %s", namespace, deploymentsErr.Error())
-		return
-	}
-
-	if !d.serviceListCache.isRunCurrent(namespace, workspaceId, runId) {
-		log.Infof("Discovery run %d for namespace %s was superseded, stopping before service probing", runId, namespace)
 		return
 	}
 
 	if len(requestedServices) > 0 {
 		total := len(services)
-		//TODO: what to do if a requested service is not found in services list ?
 		services = filterRequestedServices(services, requestedServices)
 		log.Infof("Discovery for namespace %s is limited to %d requested service(s): %d of %d k8s services matched", namespace, len(requestedServices), len(services), total)
 	}
@@ -216,9 +200,8 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 					// Looks like the namespace is in deployment/restart phase.
 					// In this case discovery result will not be completely correct, so returning the error.
 					errMsg := fmt.Sprintf("no pod is up yet for service: %s", srv.Name)
-					d.serviceListCache.setResultStatus(namespace, workspaceId, runId, view.StatusError, errMsg)
+					d.serviceListCache.setResultStatus(namespace, workspaceId, requestedServices, view.StatusError, errMsg)
 					log.Error(errMsg)
-					cancel()
 					return
 				}
 			}
@@ -231,10 +214,6 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 
 		utils.SafeAsync(func() {
 			defer wg.Done()
-
-			if ctx.Err() != nil {
-				return
-			}
 
 			serviceId := srvTmp.Name
 			serviceName := getServiceName(serviceId)
@@ -250,7 +229,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 			utils.SafeAsync(func() {
 				defer srvWg.Done()
 
-				discoveryResult, docErr = d.documentsDiscoveryService.RetrieveDocuments(ctx, baseUrl, serviceName, discoveryUrls)
+				discoveryResult, docErr = d.documentsDiscoveryService.RetrieveDocuments(baseUrl, serviceName, discoveryUrls)
 				if docErr != nil {
 					log.Errorf("Service %s have errors during discovery: %s", serviceName, docErr)
 				}
@@ -260,7 +239,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 
 			utils.SafeAsync(func() {
 				defer srvWg.Done()
-				baselinePackage, err := d.apihubClient.GetPackageByServiceName(ctx, secCtx, workspaceId, serviceName) // name here, not id!
+				baselinePackage, err := d.apihubClient.GetPackageByServiceName(secCtx, workspaceId, serviceName) // name here, not id!
 				if err != nil {
 					log.Errorf("failed to get baseline for %s: %s", serviceName, err)
 				}
@@ -269,7 +248,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 					versions := make([]string, 0)
 
 					defaultVersion := baselinePackage.DefaultReleaseVersion
-					versionsResp, err := d.apihubClient.GetVersions(ctx, secCtx, baselinePackage.Id, 0, 100)
+					versionsResp, err := d.apihubClient.GetVersions(secCtx, baselinePackage.Id, 0, 100)
 					if err != nil {
 						log.Warnf("failed to get baseline %s versions: %s", baselinePackage.Id, err)
 					} else {
@@ -334,12 +313,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 				Error:          errorStr,
 				DiagnosticInfo: diagnostic,
 			}
-			if !d.serviceListCache.addService(namespace, workspaceId, runId, srvToAdd) {
-				// The entry belongs to a newer run now, so this one has nothing left
-				// to write. Cancel so the sibling probes stop too.
-				log.Infof("Discovery run %d for namespace %s was superseded, cancelling", runId, namespace)
-				cancel()
-			}
+			d.serviceListCache.addService(namespace, workspaceId, requestedServices, srvToAdd)
 		})
 	}
 
@@ -347,7 +321,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 
 	log.Infof("Discovery for namespace %s took %dms", namespace, time.Since(start).Milliseconds())
 
-	d.serviceListCache.setResultStatus(namespace, workspaceId, runId, view.StatusComplete, "")
+	d.serviceListCache.setResultStatus(namespace, workspaceId, requestedServices, view.StatusComplete, "")
 }
 
 func getPodsForSelector(allPods []entity.Pod, selector map[string]string) []entity.Pod {

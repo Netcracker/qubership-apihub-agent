@@ -21,9 +21,9 @@ import (
 // //go:generate mockgen -destination ../mock_client/apihub.go github.com/Netcracker/qubership-apihub-agent/client ApihubClient
 
 type ApihubClient interface {
-	GetVersions(ctx context.Context, secCtx secctx.SecurityContext, id string, page, limit int) (*view.PublishedVersionsView, error)
+	GetVersions(ctx secctx.SecurityContext, id string, page, limit int) (*view.PublishedVersionsView, error)
 
-	GetPackageByServiceName(ctx context.Context, secCtx secctx.SecurityContext, workspaceId string, serviceName string) (*view.SimplePackage, error)
+	GetPackageByServiceName(ctx secctx.SecurityContext, workspaceId string, serviceName string) (*view.SimplePackage, error)
 
 	GetUserPackagesPromoteStatuses(ctx secctx.SecurityContext, packagesReq view.PackagesReq) (view.AvailablePackagePromoteStatuses, error)
 
@@ -70,8 +70,8 @@ func checkUnauthorized(resp *resty.Response) error {
 	return nil
 }
 
-func (a apihubClientImpl) GetVersions(ctx context.Context, secCtx secctx.SecurityContext, id string, page, limit int) (*view.PublishedVersionsView, error) {
-	req := a.makeRequestWithContext(ctx, secCtx)
+func (a apihubClientImpl) GetVersions(ctx secctx.SecurityContext, id string, page, limit int) (*view.PublishedVersionsView, error) {
+	req := a.makeRequest(ctx)
 	resp, err := req.Get(fmt.Sprintf("%s/api/v3/packages/%s/versions?page=%d&limit=%d", a.apihubUrl, url.PathEscape(id), page, limit))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get versions for %s: %s", id, err.Error())
@@ -93,8 +93,8 @@ func (a apihubClientImpl) GetVersions(ctx context.Context, secCtx secctx.Securit
 	return &versions, nil
 }
 
-func (a apihubClientImpl) GetPackageByServiceName(ctx context.Context, secCtx secctx.SecurityContext, workspaceId string, serviceName string) (*view.SimplePackage, error) {
-	req := a.makeRequestWithContext(ctx, secCtx)
+func (a apihubClientImpl) GetPackageByServiceName(ctx secctx.SecurityContext, workspaceId string, serviceName string) (*view.SimplePackage, error) {
+	req := a.makeRequest(ctx)
 
 	resp, err := req.Get(fmt.Sprintf("%s/api/v2/packages?kind=package&serviceName=%s&parentId=%s&showAllDescendants=true", a.apihubUrl, url.QueryEscape(serviceName), workspaceId))
 	if err != nil {
@@ -263,12 +263,6 @@ func (a apihubClientImpl) GetPatByPAT(ctx context.Context, pat string) (*view.Pe
 	}
 
 	return &patView, nil
-}
-
-func (a apihubClientImpl) makeRequestWithContext(ctx context.Context, secCtx secctx.SecurityContext) *resty.Request {
-	req := a.makeRequest(secCtx)
-	req.SetContext(ctx)
-	return req
 }
 
 func (a apihubClientImpl) makeRequest(ctx secctx.SecurityContext) *resty.Request {

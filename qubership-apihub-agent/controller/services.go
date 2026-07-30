@@ -39,7 +39,7 @@ func (s serviceControllerImpl) ListServices_deprecated(w http.ResponseWriter, r 
 	if workspaceId == "" {
 		workspaceId = view.DefaultWorkspaceId
 	}
-	servicesList := s.serviceListCache.GetServicesList(namespace, workspaceId)
+	servicesList := s.serviceListCache.GetServicesList(namespace, workspaceId, nil)
 	servicesDeprecated := make([]view.Service_deprecated, len(servicesList.Services))
 	for i, svc := range servicesList.Services {
 		servicesDeprecated[i] = svc.ToDeprecated()
@@ -53,7 +53,8 @@ func (s serviceControllerImpl) ListServices(w http.ResponseWriter, r *http.Reque
 	if workspaceId == "" {
 		workspaceId = view.DefaultWorkspaceId
 	}
-	servicesList := s.serviceListCache.GetServicesList(namespace, workspaceId)
+	requestedServices := getRequestedServicesQueryParam(r)
+	servicesList := s.serviceListCache.GetServicesList(namespace, workspaceId, requestedServices)
 	respondWithJson(w, http.StatusOK, view.ServiceListResponse{
 		Services:          servicesList.Services,
 		Status:            servicesList.Status,

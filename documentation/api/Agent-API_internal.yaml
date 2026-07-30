@@ -235,8 +235,9 @@ paths:
       summary: Start discovery process
       description: |
         Starts an asynchronous service discovery process.
-        No process ID is returned; retrieve the result via getServices, passing the same services list.
-        Shares an implementation with postNamespaceDiscoverV2, so it accepts the same optional request body.
+        No process ID is returned. Retrieve the result via getServices; a result limited to a services list is
+        readable only through getNamespaceServicesV3, passing the same list in its `services` parameter.
+        Accepts the same optional request body as postNamespaceDiscoverV2.
         Each distinct services list has its own stored result: discoveries with different lists run and are stored
         independently, and starting a discovery again with the same list resets and rebuilds that list's result.
         An absent body, or an absent or empty services list, discovers the whole namespace and stores the result
@@ -269,7 +270,8 @@ paths:
       summary: Start discovery process
       description: |
         Starts an asynchronous service discovery process.
-        No process ID is returned; retrieve the result via getServices, passing the same services list.
+        No process ID is returned. Retrieve the result via getServices; a result limited to a services list is
+        readable only through getNamespaceServicesV3, passing the same list in its `services` parameter.
         Pass a request body to limit the discovery scope to a well-known list of services.
         Each distinct services list has its own stored result: discoveries with different lists run and are stored
         independently, and starting a discovery again with the same list resets and rebuilds that list's result.
@@ -302,6 +304,8 @@ paths:
       description: |
         Retrieve a service API specification by specification ID for the given namespace and service.
         Returns the document body in JSON, YAML, or plain text depending on the stored format and Accept header.
+        To download a document found by a discovery limited to a services list, use
+        getNamespaceServicesIdSpecsIdV2 and pass the same list.
       operationId: getNamespaceServicesIdSpecsId
       deprecated: true
       x-deprecation-reason: New version of API is created - GET /v2/namespaces/{name}/workspaces/{workspaceId}/services/{serviceId}/specs/{specId}
@@ -1030,7 +1034,7 @@ components:
       description: |
         Optional body of a discovery request, used to limit the discovery scope to a well-known list of services.
         An absent body, or an absent or empty services list, discovers every service in the namespace and stores
-        the result as the default (unscoped) one - the previous behaviour.
+        the result as the default (unscoped) one.
         Each distinct services list has its own stored result; the list is treated as a set, so order and duplicates
         do not affect which result the discovery writes to.
       type: object
@@ -1042,12 +1046,15 @@ components:
             trailing blue-green `-v<N>` suffix removed. It is the same name used to resolve the APIHUB baseline package.
             One entry therefore selects every blue-green variant of that service: `apihub-be` matches both
             `apihub-be-v1` and `apihub-be-v2`. A raw Kubernetes service name such as `apihub-be-v1` matches nothing,
-            so do not pass the `id` field of a previous response here. Names not present in the namespace are ignored:
-            discovery is asynchronous, so compare `requestedServices` against `services[].serviceName` in the
-            getServices response to find them.
+            so do not pass the `id` field of a previous response here. An entry that is empty or carries leading or
+            trailing whitespace can match no service and is rejected with 400. A requested name that is absent from the
+            namespace, or that names a service the agent excludes from discovery by label, is ignored: discovery is
+            asynchronous, so compare `requestedServices` against `services[].serviceName` in the getServices response
+            to find them.
           type: array
           items:
             type: string
+            minLength: 1
           example: ["apihub-be", "apihub-fe"]
     ErrorResponse:
       description: Standard error response envelope returned for failed requests. Includes HTTP status, internal error code, and human-readable message; params and debug are optional.
@@ -1089,7 +1096,8 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     badRequest400:
       description: |
-        The request could not be processed. Typical causes are a malformed JSON body or a body larger than 1 MiB.
+        The request could not be processed. Typical causes are a malformed JSON body, a body larger than 1 MiB, or a
+        requested service name that is empty or carries leading or trailing whitespace.
         The response body follows the ErrorResponse schema.
       content:
         application/json:
