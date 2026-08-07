@@ -61,6 +61,8 @@ func main() {
 		log.Error("Failed to read system info: " + err.Error())
 		panic("Failed to read system info: " + err.Error())
 	}
+
+	controller.SetShowDebugInResponse(systemInfoService.ShowDebugInResponse())
 	if err := utils.ValidateTLSAtStartup(); err != nil {
 		log.Fatalf("TLS configuration failed: %v", err)
 	}
