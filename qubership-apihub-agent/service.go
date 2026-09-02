@@ -14,6 +14,7 @@ import (
 	"github.com/netcracker/qubership-core-lib-go-paas-mediation-client/v8/types"
 
 	"github.com/Netcracker/qubership-apihub-agent/client"
+	"github.com/Netcracker/qubership-apihub-agent/responder"
 	"github.com/Netcracker/qubership-apihub-agent/security"
 	"github.com/Netcracker/qubership-apihub-agent/utils"
 	"github.com/gorilla/handlers"
@@ -62,7 +63,7 @@ func main() {
 		panic("Failed to read system info: " + err.Error())
 	}
 
-	controller.SetShowDebugInResponse(systemInfoService.ShowDebugInResponse())
+	resp := responder.NewResponder(systemInfoService.ShowDebugInResponse())
 	if err := utils.ValidateTLSAtStartup(); err != nil {
 		log.Fatalf("TLS configuration failed: %v", err)
 	}
@@ -104,52 +105,59 @@ func main() {
 	cloudService := service.NewCloudService(discoveryService, serviceListCache, namespaceListCache)
 	routesService := service.NewRoutesService(paasCl)
 
-	namespaceController := controller.NewNamespaceController(namespaceListCache)
-	serviceController := controller.NewServiceController(serviceListCache, discoveryService, listService)
-	documentController := controller.NewDocumentController(documentService)
-	serviceProxyController, err := controller.NewServiceProxyController(discoveryService)
+	namespaceController := controller.NewNamespaceController(namespaceListCache, resp)
+	serviceController := controller.NewServiceController(serviceListCache, discoveryService, listService, resp)
+	documentController := controller.NewDocumentController(documentService, resp)
+	serviceProxyController, err := controller.NewServiceProxyController(discoveryService, resp)
 	if err != nil {
 		panic(fmt.Sprintf("Can't create service proxy controller: %s", err.Error()))
 	}
-	apiDocsController := controller.NewApiDocsController(systemInfoService.GetBasePath())
-	cloudController := controller.NewCloudController(cloudService)
-	routesController := controller.NewRoutesController(routesService)
-	logsController := controller.NewLogsController()
+	apiDocsController := controller.NewApiDocsController(systemInfoService.GetBasePath(), resp)
+	cloudController := controller.NewCloudController(cloudService, resp)
+	routesController := controller.NewRoutesController(routesService, resp)
+	logsController := controller.NewLogsController(resp)
 
-	disablingMiddleware := controller.NewDisabledServicesMiddleware(disablingSerivce)
+	disablingMiddleware := controller.NewDisabledServicesMiddleware(disablingSerivce, resp)
 	r := mux.NewRouter().SkipClean(true).UseEncodedPath()
 	r.Use(disablingMiddleware.HandleRequest)
 	r.Use(midldleware.WriteDeadlineMiddleware)
-	r.HandleFunc("/api/v1/namespaces", security.Secure(namespaceController.ListNamespaces)).Methods(http.MethodGet)
-	r.HandleFunc("/api/v1/namespaces/{name}/serviceNames", security.Secure(serviceController.ListServiceNames)).Methods(http.MethodGet)
-	r.HandleFunc("/api/v1/namespaces/{name}/routes/{routeName}", security.Secure(routesController.GetRouteByName)).Methods(http.MethodGet)
-	r.HandleFunc("/api/v1/namespaces/{name}/serviceItems", security.Secure(serviceController.ListServiceItems)).Methods(http.MethodGet)
+
+	authHandler, err := security.NewAuthHandler(apihubClient, resp)
+	if err != nil {
+		log.Fatalf("Failed to setup go guardian: %s", err.Error())
+	}
+	log.Info("go_guardian was installed")
+
+	r.HandleFunc("/api/v1/namespaces", authHandler.Secure(namespaceController.ListNamespaces)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces/{name}/serviceNames", authHandler.Secure(serviceController.ListServiceNames)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces/{name}/routes/{routeName}", authHandler.Secure(routesController.GetRouteByName)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces/{name}/serviceItems", authHandler.Secure(serviceController.ListServiceItems)).Methods(http.MethodGet)
 
 	//deprecated
-	r.HandleFunc("/api/v1/namespaces/{name}/services", security.Secure(serviceController.ListServices_deprecated)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces/{name}/services", authHandler.Secure(serviceController.ListServices_deprecated)).Methods(http.MethodGet)
 	//deprecated
-	r.HandleFunc("/api/v1/namespaces/{name}/discover", security.Secure(serviceController.StartDiscovery)).Methods(http.MethodPost)
+	r.HandleFunc("/api/v1/namespaces/{name}/discover", authHandler.Secure(serviceController.StartDiscovery)).Methods(http.MethodPost)
 	//deprecated
-	r.HandleFunc("/api/v1/namespaces/{name}/services/{serviceId}/specs/{fileId}", security.Secure(documentController.GetServiceDocument)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces/{name}/services/{serviceId}/specs/{fileId}", authHandler.Secure(documentController.GetServiceDocument)).Methods(http.MethodGet)
 
-	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/services", security.Secure(serviceController.ListServices_deprecated)).Methods(http.MethodGet) //deprecated
-	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/discover", security.Secure(serviceController.StartDiscovery)).Methods(http.MethodPost)
-	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/services/{serviceId}/specs/{fileId}", security.Secure(documentController.GetServiceDocument)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/services", authHandler.Secure(serviceController.ListServices_deprecated)).Methods(http.MethodGet) //deprecated
+	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/discover", authHandler.Secure(serviceController.StartDiscovery)).Methods(http.MethodPost)
+	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/services/{serviceId}/specs/{fileId}", authHandler.Secure(documentController.GetServiceDocument)).Methods(http.MethodGet)
 
-	r.HandleFunc("/api/v3/namespaces/{name}/workspaces/{workspaceId}/services", security.Secure(serviceController.ListServices)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v3/namespaces/{name}/workspaces/{workspaceId}/services", authHandler.Secure(serviceController.ListServices)).Methods(http.MethodGet)
 
 	//deprecated
-	r.HandleFunc("/api/v1/discover", security.Secure(cloudController.StartAllDiscovery_deprecated)).Methods(http.MethodPost)
+	r.HandleFunc("/api/v1/discover", authHandler.Secure(cloudController.StartAllDiscovery_deprecated)).Methods(http.MethodPost)
 	//deprecated
-	r.HandleFunc("/api/v1/services", security.Secure(cloudController.ListAllServices_deprecated)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/services", authHandler.Secure(cloudController.ListAllServices_deprecated)).Methods(http.MethodGet)
 
-	r.HandleFunc("/api/v2/workspaces/{workspaceId}/discover", security.Secure(cloudController.StartAllDiscovery_deprecated)).Methods(http.MethodPost) //deprecated
-	r.HandleFunc("/api/v2/workspaces/{workspaceId}/services", security.Secure(cloudController.ListAllServices_deprecated)).Methods(http.MethodGet)    //deprecated
+	r.HandleFunc("/api/v2/workspaces/{workspaceId}/discover", authHandler.Secure(cloudController.StartAllDiscovery_deprecated)).Methods(http.MethodPost) //deprecated
+	r.HandleFunc("/api/v2/workspaces/{workspaceId}/services", authHandler.Secure(cloudController.ListAllServices_deprecated)).Methods(http.MethodGet)    //deprecated
 
 	r.HandleFunc("/v3/api-docs", apiDocsController.GetSpec).Methods(http.MethodGet)
 
-	r.HandleFunc("/api/v1/debug/logs/setLevel", security.Secure(logsController.SetLogLevel)).Methods(http.MethodPost)
-	r.HandleFunc("/api/v1/debug/logs/checkLevel", security.Secure(logsController.CheckLogLevel)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/debug/logs/setLevel", authHandler.Secure(logsController.SetLogLevel)).Methods(http.MethodPost)
+	r.HandleFunc("/api/v1/debug/logs/checkLevel", authHandler.Secure(logsController.CheckLogLevel)).Methods(http.MethodGet)
 
 	healthController := controller.NewHealthController()
 	healthController.AddStartupCheck(func() bool {
@@ -170,10 +178,10 @@ func main() {
 	if systemInfoService.InsecureProxyEnabled() {
 		r.PathPrefix(utils.ProxyPathDeprecated).HandlerFunc(serviceProxyController.Proxy) //deprecated
 	} else {
-		r.PathPrefix(utils.ProxyPathDeprecated).HandlerFunc(security.SecureProxy(serviceProxyController.Proxy)) //deprecated
+		r.PathPrefix(utils.ProxyPathDeprecated).HandlerFunc(authHandler.SecureProxy(serviceProxyController.Proxy)) //deprecated
 	}
 
-	r.PathPrefix(utils.ProxyPath).HandlerFunc(security.SecureProxy(serviceProxyController.Proxy))
+	r.PathPrefix(utils.ProxyPath).HandlerFunc(authHandler.SecureProxy(serviceProxyController.Proxy))
 
 	knownPathPrefixes := []string{
 		"/api/",
@@ -195,7 +203,7 @@ func main() {
 				"remote_addr":     remoteAddr,
 			}).Warn("Requested unknown endpoint")
 
-			controller.RespondWithCustomError(w, &exception.CustomError{
+			resp.RespondWithCustomError(w, &exception.CustomError{
 				Status:  http.StatusMisdirectedRequest,
 				Message: "Requested unknown endpoint",
 			})
@@ -203,12 +211,6 @@ func main() {
 	}
 
 	debug.SetGCPercent(30)
-
-	err = security.SetupGoGuardian(apihubClient)
-	if err != nil {
-		log.Fatalf("Failed to setup go guardian: %s", err.Error())
-	}
-	log.Info("go_guardian was installed")
 
 	regService.RunAgentRegistrationProcess()
 

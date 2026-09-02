@@ -1,21 +1,13 @@
 package controller
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/url"
 	"strconv"
 
 	"github.com/Netcracker/qubership-apihub-agent/exception"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
-
-var showDebugInResponse bool
-
-func SetShowDebugInResponse(value bool) {
-	showDebugInResponse = value
-}
 
 func getStringParam(r *http.Request, p string) string {
 	params := mux.Vars(r)
@@ -25,45 +17,6 @@ func getStringParam(r *http.Request, p string) string {
 func getUnescapedStringParam(r *http.Request, p string) (string, error) {
 	params := mux.Vars(r)
 	return url.PathUnescape(params[p])
-}
-func RespondWithCustomError(w http.ResponseWriter, err *exception.CustomError) {
-	log.Debugf("Request failed. Code = %d. Message = %s. Params: %v. Debug: %s", err.Status, err.Message, err.Params, err.Debug)
-	if !showDebugInResponse && err.Debug != "" {
-		errWithoutDebug := *err
-		errWithoutDebug.Debug = ""
-		respondWithJson(w, errWithoutDebug.Status, errWithoutDebug)
-		return
-	}
-	respondWithJson(w, err.Status, err)
-}
-
-func respondWithJson(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
-}
-
-func respondWithError(w http.ResponseWriter, msg string, err error) {
-	if customError, ok := err.(*exception.CustomError); ok {
-		logCustomError(msg, customError, err)
-		RespondWithCustomError(w, customError)
-		return
-	}
-
-	log.Errorf("%s: %s", msg, err.Error())
-	RespondWithCustomError(w, &exception.CustomError{
-		Status:  http.StatusInternalServerError,
-		Message: msg,
-		Debug:   err.Error()})
-}
-
-func logCustomError(msg string, customError *exception.CustomError, err error) {
-	if customError.Status == http.StatusNotFound {
-		log.Infof("%s: %s", msg, err.Error())
-		return
-	}
-	log.Errorf("%s: %s", msg, err.Error())
 }
 
 func getFailOnErrorQueryParam(r *http.Request) (bool, *exception.CustomError) {
