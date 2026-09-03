@@ -42,7 +42,8 @@ func (d documentControllerImpl) GetServiceDocument(w http.ResponseWriter, r *htt
 		return
 	}
 
-	content, err := d.documentService.GetDocumentById(namespace, workspaceId, serviceId, fileId)
+	requestedServices := getRequestedServicesQueryParam(r)
+	content, err := d.documentService.GetDocumentById(namespace, workspaceId, serviceId, fileId, requestedServices)
 
 	if err != nil {
 		d.responder.RespondWithError(w, "Failed to get document by id", err)

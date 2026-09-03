@@ -43,12 +43,16 @@ func (s serviceControllerImpl) ListServices_deprecated(w http.ResponseWriter, r 
 	if workspaceId == "" {
 		workspaceId = view.DefaultWorkspaceId
 	}
-	services, status, details := s.serviceListCache.GetServicesList(namespace, workspaceId)
-	servicesDeprecated := make([]view.Service_deprecated, len(services))
-	for i, svc := range services {
+	servicesList := s.serviceListCache.GetServicesList(namespace, workspaceId, nil)
+	servicesDeprecated := make([]view.Service_deprecated, len(servicesList.Services))
+	for i, svc := range servicesList.Services {
 		servicesDeprecated[i] = svc.ToDeprecated()
 	}
+<<<<<<< HEAD
 	s.responder.RespondWithJson(w, http.StatusOK, view.ServiceListResponse_deprecated{Services: servicesDeprecated, Status: status, Debug: details})
+=======
+	respondWithJson(w, http.StatusOK, view.ServiceListResponse_deprecated{Services: servicesDeprecated, Status: servicesList.Status, Debug: servicesList.Details})
+>>>>>>> develop
 }
 
 func (s serviceControllerImpl) ListServices(w http.ResponseWriter, r *http.Request) {
@@ -57,8 +61,19 @@ func (s serviceControllerImpl) ListServices(w http.ResponseWriter, r *http.Reque
 	if workspaceId == "" {
 		workspaceId = view.DefaultWorkspaceId
 	}
+<<<<<<< HEAD
 	services, status, details := s.serviceListCache.GetServicesList(namespace, workspaceId)
 	s.responder.RespondWithJson(w, http.StatusOK, view.ServiceListResponse{Services: services, Status: status, Debug: details})
+=======
+	requestedServices := getRequestedServicesQueryParam(r)
+	servicesList := s.serviceListCache.GetServicesList(namespace, workspaceId, requestedServices)
+	respondWithJson(w, http.StatusOK, view.ServiceListResponse{
+		Services:          servicesList.Services,
+		Status:            servicesList.Status,
+		Debug:             servicesList.Details,
+		RequestedServices: servicesList.RequestedServices,
+	})
+>>>>>>> develop
 }
 
 func (s serviceControllerImpl) StartDiscovery(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +90,13 @@ func (s serviceControllerImpl) StartDiscovery(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	err := s.discoveryService.StartDiscovery(secctx.Create(r), namespace, workspaceId, failOnError)
+	req, bodyErr := getDiscoveryRequestBody(w, r)
+	if bodyErr != nil {
+		respondWithError(w, "Failed to parse discovery request body", bodyErr)
+		return
+	}
+
+	err := s.discoveryService.StartDiscovery(secctx.Create(r), namespace, workspaceId, failOnError, req)
 	if err != nil {
 		s.responder.RespondWithError(w, "Failed to start discovery process", err)
 		return
