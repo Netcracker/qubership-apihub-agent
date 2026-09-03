@@ -1,12 +1,9 @@
 package controller
 
 import (
-<<<<<<< HEAD
-=======
 	"bytes"
 	"encoding/json"
 	"io"
->>>>>>> develop
 	"net/http"
 	"net/url"
 	"strconv"
