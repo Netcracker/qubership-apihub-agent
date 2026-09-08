@@ -12,7 +12,7 @@ type ApiDocsController interface {
 	GetSpec(w http.ResponseWriter, r *http.Request)
 }
 
-func NewApiDocsController(fsRoot string, resp *responder.Responder) ApiDocsController {
+func NewApiDocsController(fsRoot string, resp responder.Responder) ApiDocsController {
 	return apiDocsControllerImpl{
 		fsRoot:    fsRoot + "/api",
 		responder: resp,
@@ -21,7 +21,7 @@ func NewApiDocsController(fsRoot string, resp *responder.Responder) ApiDocsContr
 
 type apiDocsControllerImpl struct {
 	fsRoot    string
-	responder *responder.Responder
+	responder responder.Responder
 }
 
 func (a apiDocsControllerImpl) GetSpec(w http.ResponseWriter, r *http.Request) {

@@ -18,12 +18,12 @@ import (
 )
 
 type Authenticator struct {
-	responder     *responder.Responder
+	responder     responder.Responder
 	strategy      union.Union
 	proxyStrategy union.Union
 }
 
-func NewAuthenticator(apihubClient client.ApihubClient, resp *responder.Responder) (Authenticator, error) {
+func NewAuthenticator(apihubClient client.ApihubClient, resp responder.Responder) (Authenticator, error) {
 	if apihubClient == nil {
 		return Authenticator{}, fmt.Errorf("apihubClient is nil")
 	}

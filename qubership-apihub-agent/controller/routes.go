@@ -11,7 +11,7 @@ type RoutesController interface {
 	GetRouteByName(w http.ResponseWriter, r *http.Request)
 }
 
-func NewRoutesController(routesSvc service.RoutesService, resp *responder.Responder) RoutesController {
+func NewRoutesController(routesSvc service.RoutesService, resp responder.Responder) RoutesController {
 	return &routesController{
 		routesSvc: routesSvc,
 		responder: resp,
@@ -20,7 +20,7 @@ func NewRoutesController(routesSvc service.RoutesService, resp *responder.Respon
 
 type routesController struct {
 	routesSvc service.RoutesService
-	responder *responder.Responder
+	responder responder.Responder
 }
 
 func (c routesController) GetRouteByName(w http.ResponseWriter, r *http.Request) {

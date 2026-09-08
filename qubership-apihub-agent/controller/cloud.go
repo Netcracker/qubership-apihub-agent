@@ -14,13 +14,13 @@ type CloudController interface {
 	StartAllDiscovery_deprecated(w http.ResponseWriter, r *http.Request)
 }
 
-func NewCloudController(cloudService service.CloudService, resp *responder.Responder) CloudController {
+func NewCloudController(cloudService service.CloudService, resp responder.Responder) CloudController {
 	return &cloudControllerImpl{cloudService: cloudService, responder: resp}
 }
 
 type cloudControllerImpl struct {
 	cloudService service.CloudService
-	responder    *responder.Responder
+	responder    responder.Responder
 }
 
 func (c cloudControllerImpl) ListAllServices_deprecated(w http.ResponseWriter, r *http.Request) {

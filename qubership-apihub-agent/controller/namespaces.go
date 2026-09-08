@@ -12,13 +12,13 @@ type NamespaceController interface {
 	ListNamespaces(w http.ResponseWriter, r *http.Request)
 }
 
-func NewNamespaceController(namespaceListCache service.NamespaceListCache, resp *responder.Responder) NamespaceController {
+func NewNamespaceController(namespaceListCache service.NamespaceListCache, resp responder.Responder) NamespaceController {
 	return namespaceControllerImpl{namespaceListCache: namespaceListCache, responder: resp}
 }
 
 type namespaceControllerImpl struct {
 	namespaceListCache service.NamespaceListCache
-	responder          *responder.Responder
+	responder          responder.Responder
 }
 
 func (n namespaceControllerImpl) ListNamespaces(w http.ResponseWriter, r *http.Request) {

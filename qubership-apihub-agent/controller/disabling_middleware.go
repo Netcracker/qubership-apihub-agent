@@ -11,13 +11,13 @@ type DisabledServicesMiddleware interface {
 	HandleRequest(h http.Handler) http.Handler
 }
 
-func NewDisabledServicesMiddleware(disablingService service.DisablingService, resp *responder.Responder) DisabledServicesMiddleware {
+func NewDisabledServicesMiddleware(disablingService service.DisablingService, resp responder.Responder) DisabledServicesMiddleware {
 	return &disabledServicesMiddlewareImpl{disablingService: disablingService, responder: resp}
 }
 
 type disabledServicesMiddlewareImpl struct {
 	disablingService service.DisablingService
-	responder        *responder.Responder
+	responder        responder.Responder
 }
 
 func (i *disabledServicesMiddlewareImpl) HandleRequest(next http.Handler) http.Handler {

@@ -15,7 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func NewServiceProxyController(discoveryService service.DiscoveryService, resp *responder.Responder) (ProxyController, error) {
+func NewServiceProxyController(discoveryService service.DiscoveryService, resp responder.Responder) (ProxyController, error) {
 	tlsConfig, err := utils.BuildSecureTLSConfig(nil)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func NewServiceProxyController(discoveryService service.DiscoveryService, resp *
 type serviceProxyControllerImpl struct {
 	tr               http.Transport
 	discoveryService service.DiscoveryService
-	responder        *responder.Responder
+	responder        responder.Responder
 }
 
 const CustomJwtAuthHeader = "X-Apihub-Authorization"

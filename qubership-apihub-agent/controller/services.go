@@ -20,7 +20,7 @@ type ServiceController interface {
 func NewServiceController(serviceListCache service.ServiceListCache,
 	discoveryService service.DiscoveryService,
 	listNamesService service.ListService,
-	resp *responder.Responder) ServiceController {
+	resp responder.Responder) ServiceController {
 	return serviceControllerImpl{
 		serviceListCache: serviceListCache,
 		discoveryService: discoveryService,
@@ -33,7 +33,7 @@ type serviceControllerImpl struct {
 	serviceListCache service.ServiceListCache
 	discoveryService service.DiscoveryService
 	listService      service.ListService
-	responder        *responder.Responder
+	responder        responder.Responder
 }
 
 func (s serviceControllerImpl) ListServices_deprecated(w http.ResponseWriter, r *http.Request) {

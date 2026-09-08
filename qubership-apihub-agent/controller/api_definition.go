@@ -13,13 +13,13 @@ type DocumentController interface {
 	GetServiceDocument(w http.ResponseWriter, r *http.Request)
 }
 
-func NewDocumentController(documentService service.DocumentService, resp *responder.Responder) DocumentController {
+func NewDocumentController(documentService service.DocumentService, resp responder.Responder) DocumentController {
 	return documentControllerImpl{documentService: documentService, responder: resp}
 }
 
 type documentControllerImpl struct {
 	documentService service.DocumentService
-	responder       *responder.Responder
+	responder       responder.Responder
 }
 
 func (d documentControllerImpl) GetServiceDocument(w http.ResponseWriter, r *http.Request) {
