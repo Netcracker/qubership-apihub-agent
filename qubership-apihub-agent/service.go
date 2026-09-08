@@ -121,42 +121,42 @@ func main() {
 	r.Use(disablingMiddleware.HandleRequest)
 	r.Use(midldleware.WriteDeadlineMiddleware)
 
-	authHandler, err := security.NewAuthHandler(apihubClient, resp)
+	authenticator, err := security.NewAuthenticator(apihubClient, resp)
 	if err != nil {
 		log.Fatalf("Failed to setup go guardian: %s", err.Error())
 	}
 	log.Info("go_guardian was installed")
 
-	r.HandleFunc("/api/v1/namespaces", authHandler.Secure(namespaceController.ListNamespaces)).Methods(http.MethodGet)
-	r.HandleFunc("/api/v1/namespaces/{name}/serviceNames", authHandler.Secure(serviceController.ListServiceNames)).Methods(http.MethodGet)
-	r.HandleFunc("/api/v1/namespaces/{name}/routes/{routeName}", authHandler.Secure(routesController.GetRouteByName)).Methods(http.MethodGet)
-	r.HandleFunc("/api/v1/namespaces/{name}/serviceItems", authHandler.Secure(serviceController.ListServiceItems)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces", authenticator.Secure(namespaceController.ListNamespaces)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces/{name}/serviceNames", authenticator.Secure(serviceController.ListServiceNames)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces/{name}/routes/{routeName}", authenticator.Secure(routesController.GetRouteByName)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces/{name}/serviceItems", authenticator.Secure(serviceController.ListServiceItems)).Methods(http.MethodGet)
 
 	//deprecated
-	r.HandleFunc("/api/v1/namespaces/{name}/services", authHandler.Secure(serviceController.ListServices_deprecated)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces/{name}/services", authenticator.Secure(serviceController.ListServices_deprecated)).Methods(http.MethodGet)
 	//deprecated
-	r.HandleFunc("/api/v1/namespaces/{name}/discover", authHandler.Secure(serviceController.StartDiscovery)).Methods(http.MethodPost)
+	r.HandleFunc("/api/v1/namespaces/{name}/discover", authenticator.Secure(serviceController.StartDiscovery)).Methods(http.MethodPost)
 	//deprecated
-	r.HandleFunc("/api/v1/namespaces/{name}/services/{serviceId}/specs/{fileId}", authHandler.Secure(documentController.GetServiceDocument)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/namespaces/{name}/services/{serviceId}/specs/{fileId}", authenticator.Secure(documentController.GetServiceDocument)).Methods(http.MethodGet)
 
-	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/services", authHandler.Secure(serviceController.ListServices_deprecated)).Methods(http.MethodGet) //deprecated
-	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/discover", authHandler.Secure(serviceController.StartDiscovery)).Methods(http.MethodPost)
-	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/services/{serviceId}/specs/{fileId}", authHandler.Secure(documentController.GetServiceDocument)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/services", authenticator.Secure(serviceController.ListServices_deprecated)).Methods(http.MethodGet) //deprecated
+	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/discover", authenticator.Secure(serviceController.StartDiscovery)).Methods(http.MethodPost)
+	r.HandleFunc("/api/v2/namespaces/{name}/workspaces/{workspaceId}/services/{serviceId}/specs/{fileId}", authenticator.Secure(documentController.GetServiceDocument)).Methods(http.MethodGet)
 
-	r.HandleFunc("/api/v3/namespaces/{name}/workspaces/{workspaceId}/services", authHandler.Secure(serviceController.ListServices)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v3/namespaces/{name}/workspaces/{workspaceId}/services", authenticator.Secure(serviceController.ListServices)).Methods(http.MethodGet)
 
 	//deprecated
-	r.HandleFunc("/api/v1/discover", authHandler.Secure(cloudController.StartAllDiscovery_deprecated)).Methods(http.MethodPost)
+	r.HandleFunc("/api/v1/discover", authenticator.Secure(cloudController.StartAllDiscovery_deprecated)).Methods(http.MethodPost)
 	//deprecated
-	r.HandleFunc("/api/v1/services", authHandler.Secure(cloudController.ListAllServices_deprecated)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/services", authenticator.Secure(cloudController.ListAllServices_deprecated)).Methods(http.MethodGet)
 
-	r.HandleFunc("/api/v2/workspaces/{workspaceId}/discover", authHandler.Secure(cloudController.StartAllDiscovery_deprecated)).Methods(http.MethodPost) //deprecated
-	r.HandleFunc("/api/v2/workspaces/{workspaceId}/services", authHandler.Secure(cloudController.ListAllServices_deprecated)).Methods(http.MethodGet)    //deprecated
+	r.HandleFunc("/api/v2/workspaces/{workspaceId}/discover", authenticator.Secure(cloudController.StartAllDiscovery_deprecated)).Methods(http.MethodPost) //deprecated
+	r.HandleFunc("/api/v2/workspaces/{workspaceId}/services", authenticator.Secure(cloudController.ListAllServices_deprecated)).Methods(http.MethodGet)    //deprecated
 
 	r.HandleFunc("/v3/api-docs", apiDocsController.GetSpec).Methods(http.MethodGet)
 
-	r.HandleFunc("/api/v1/debug/logs/setLevel", authHandler.Secure(logsController.SetLogLevel)).Methods(http.MethodPost)
-	r.HandleFunc("/api/v1/debug/logs/checkLevel", authHandler.Secure(logsController.CheckLogLevel)).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/debug/logs/setLevel", authenticator.Secure(logsController.SetLogLevel)).Methods(http.MethodPost)
+	r.HandleFunc("/api/v1/debug/logs/checkLevel", authenticator.Secure(logsController.CheckLogLevel)).Methods(http.MethodGet)
 
 	healthController := controller.NewHealthController()
 	healthController.AddStartupCheck(func() bool {
@@ -177,10 +177,10 @@ func main() {
 	if systemInfoService.InsecureProxyEnabled() {
 		r.PathPrefix(utils.ProxyPathDeprecated).HandlerFunc(serviceProxyController.Proxy) //deprecated
 	} else {
-		r.PathPrefix(utils.ProxyPathDeprecated).HandlerFunc(authHandler.SecureProxy(serviceProxyController.Proxy)) //deprecated
+		r.PathPrefix(utils.ProxyPathDeprecated).HandlerFunc(authenticator.SecureProxy(serviceProxyController.Proxy)) //deprecated
 	}
 
-	r.PathPrefix(utils.ProxyPath).HandlerFunc(authHandler.SecureProxy(serviceProxyController.Proxy))
+	r.PathPrefix(utils.ProxyPath).HandlerFunc(authenticator.SecureProxy(serviceProxyController.Proxy))
 
 	knownPathPrefixes := []string{
 		"/api/",
