@@ -80,10 +80,24 @@ func buildRootCertPool(customPEM []byte) (*x509.CertPool, error) {
 
 // CreateSecureHTTPClient returns an HTTP client with secure TLS configuration.
 func CreateSecureHTTPClient(timeout time.Duration) (*http.Client, error) {
+	return createSecureHTTPClient(timeout, false)
+}
+
+// CreateSecureHTTPClientDisableKeepAlives returns an HTTP client that does not
+// reuse TCP connections. net/http then sends Connection: close and tears the
+// socket down after each request, including on Client.Timeout.
+func CreateSecureHTTPClientDisableKeepAlives(timeout time.Duration) (*http.Client, error) {
+	return createSecureHTTPClient(timeout, true)
+}
+
+func createSecureHTTPClient(timeout time.Duration, disableKeepAlives bool) (*http.Client, error) {
 	tlsConfig, err := BuildSecureTLSConfig(nil)
 	if err != nil {
 		return nil, err
 	}
-	tr := http.Transport{TLSClientConfig: tlsConfig}
+	tr := http.Transport{
+		TLSClientConfig:   tlsConfig,
+		DisableKeepAlives: disableKeepAlives,
+	}
 	return &http.Client{Transport: &tr, Timeout: timeout}, nil
 }

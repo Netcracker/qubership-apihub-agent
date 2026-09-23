@@ -17,7 +17,7 @@ type AgentsBackendClient interface {
 }
 
 func NewAgentsBackendClient(apihubUrl string, accessToken string) (AgentsBackendClient, error) {
-	httpClient, err := utils.CreateSecureHTTPClient(time.Second * 60)
+	httpClient, err := utils.CreateSecureHTTPClientDisableKeepAlives(time.Second * 60)
 	if err != nil {
 		return nil, err
 	}
