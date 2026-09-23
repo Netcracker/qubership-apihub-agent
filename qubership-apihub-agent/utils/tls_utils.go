@@ -15,11 +15,9 @@
 package utils
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -82,76 +80,24 @@ func buildRootCertPool(customPEM []byte) (*x509.CertPool, error) {
 
 // CreateSecureHTTPClient returns an HTTP client with secure TLS configuration.
 func CreateSecureHTTPClient(timeout time.Duration) (*http.Client, error) {
-	return newSecureHTTPClient(httpClientOptions{timeout: timeout})
+	return createSecureHTTPClient(timeout, false)
 }
 
-// CreateSecureHTTPClientCloseAfterRequest returns a client that tears down the TCP
-// connection after every request, including when Timeout fires while waiting for
-// response headers. DisableKeepAlives plus RST-on-close make the proxy see an abort
-// instead of an idle keep-alive; HTTP/2 is disabled so a cancelled stream cannot
-// leave the socket open.
-func CreateSecureHTTPClientCloseAfterRequest(timeout time.Duration) (*http.Client, error) {
-	return newSecureHTTPClient(httpClientOptions{
-		timeout:               timeout,
-		disableKeepAlives:     true,
-		rstOnClose:            true,
-		responseHeaderTimeout: timeout,
-		disableHTTP2:          true,
-	})
+// CreateSecureHTTPClientDisableKeepAlives returns an HTTP client that does not
+// reuse TCP connections. net/http then sends Connection: close and tears the
+// socket down after each request, including on Client.Timeout.
+func CreateSecureHTTPClientDisableKeepAlives(timeout time.Duration) (*http.Client, error) {
+	return createSecureHTTPClient(timeout, true)
 }
 
-type httpClientOptions struct {
-	timeout               time.Duration
-	disableKeepAlives     bool
-	rstOnClose            bool
-	maxConnsPerHost       int
-	responseHeaderTimeout time.Duration
-	disableHTTP2          bool
-}
-
-func newSecureHTTPClient(opts httpClientOptions) (*http.Client, error) {
+func createSecureHTTPClient(timeout time.Duration, disableKeepAlives bool) (*http.Client, error) {
 	tlsConfig, err := BuildSecureTLSConfig(nil)
 	if err != nil {
 		return nil, err
 	}
-	dialer := &net.Dialer{
-		Timeout:   10 * time.Second,
-		KeepAlive: 30 * time.Second,
+	tr := http.Transport{
+		TLSClientConfig:   tlsConfig,
+		DisableKeepAlives: disableKeepAlives,
 	}
-	tr := &http.Transport{
-		DialContext:           dialer.DialContext,
-		TLSClientConfig:       tlsConfig,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		DisableKeepAlives:     opts.disableKeepAlives,
-		MaxConnsPerHost:       opts.maxConnsPerHost,
-		ResponseHeaderTimeout: opts.responseHeaderTimeout,
-		ForceAttemptHTTP2:     !opts.disableHTTP2,
-	}
-	if opts.disableHTTP2 {
-		tr.TLSNextProto = map[string]func(authority string, c *tls.Conn) http.RoundTripper{}
-	}
-	if opts.rstOnClose {
-		tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			conn, err := dialer.DialContext(ctx, network, addr)
-			if err != nil {
-				return nil, err
-			}
-			return &rstOnCloseConn{Conn: conn}, nil
-		}
-	}
-	return &http.Client{Transport: tr, Timeout: opts.timeout}, nil
-}
-
-// rstOnCloseConn sends TCP RST on Close (SO_LINGER 0) so a timed-out request
-// is not a graceful half-close that HAProxy may keep as a live backend session.
-type rstOnCloseConn struct {
-	net.Conn
-}
-
-func (c *rstOnCloseConn) Close() error {
-	if tc, ok := c.Conn.(*net.TCPConn); ok {
-		_ = tc.SetLinger(0)
-	}
-	return c.Conn.Close()
+	return &http.Client{Transport: &tr, Timeout: timeout}, nil
 }
