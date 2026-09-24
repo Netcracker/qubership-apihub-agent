@@ -79,11 +79,12 @@ func buildRootCertPool(customPEM []byte) (*x509.CertPool, error) {
 }
 
 // CreateSecureHTTPClient returns an HTTP client with secure TLS configuration.
-func CreateSecureHTTPClient(timeout time.Duration) (*http.Client, error) {
+// name identifies the client's connection pool in the periodic diagnostic logs.
+func CreateSecureHTTPClient(timeout time.Duration, name string) (*http.Client, error) {
 	tlsConfig, err := BuildSecureTLSConfig(nil)
 	if err != nil {
 		return nil, err
 	}
-	tr := http.Transport{TLSClientConfig: tlsConfig}
-	return &http.Client{Transport: &tr, Timeout: timeout}, nil
+	tr := &http.Transport{TLSClientConfig: tlsConfig}
+	return &http.Client{Transport: RegisterPoolStats(name, tr), Timeout: timeout}, nil
 }

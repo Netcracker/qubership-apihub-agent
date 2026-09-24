@@ -210,6 +210,7 @@ func main() {
 	}
 
 	regService.RunAgentRegistrationProcess()
+	service.RunConnectionPoolDiagnostics()
 
 	listenAddr := os.Getenv("LISTEN_ADDRESS")
 	if listenAddr == "" {
