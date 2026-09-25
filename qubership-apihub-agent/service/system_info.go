@@ -62,7 +62,7 @@ func setDefaults() {
 	viper.SetDefault("technicalParameters.paasPlatform", "KUBERNETES")
 	viper.SetDefault("technicalParameters.namespacesCacheTTLMin", 1440)
 	viper.SetDefault("technicalParameters.servicesCacheTTLMin", 480)
-	viper.SetDefault("technicalParameters.debugEnabled", false)
+	viper.SetDefault("technicalParameters.debugEnabled", true)
 	viper.SetDefault("security.allowedOrigins", []string{})
 	viper.SetDefault("security.insecureProxy", false)
 	viper.SetDefault("security.showDebugInResponse", false)
