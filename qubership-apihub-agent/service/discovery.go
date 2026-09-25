@@ -245,7 +245,7 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 				}
 
 				if baselinePackage != nil {
-					versions := make([]string, 0)
+					versions := make([]view.BaselineVersion, 0)
 
 					defaultVersion := baselinePackage.DefaultReleaseVersion
 					versionsResp, err := d.apihubClient.GetVersions(secCtx, baselinePackage.Id, 0, 100)
@@ -254,11 +254,14 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 					} else {
 						if versionsResp != nil {
 							for _, v := range versionsResp.Versions {
-								versions = append(versions, v.Version)
-
-								if defaultVersion == "" {
-									defaultVersion = v.Version
-								}
+								versions = append(versions, view.BaselineVersion{
+									Version:            v.Version,
+									HasErrors:          v.HasErrors,
+									ChangelogHasErrors: v.ChangelogHasErrors,
+								})
+							}
+							if defaultVersion == "" && len(versions) > 0 {
+								defaultVersion = versions[0].Version
 							}
 						}
 					}
