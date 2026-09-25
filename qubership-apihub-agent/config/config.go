@@ -18,6 +18,7 @@ type TechnicalParameters struct {
 	PaasPlatform          string `validate:"required"`
 	NamespacesCacheTTLMin int
 	ServicesCacheTTLMin   int
+	DebugEnabled          bool
 }
 
 type ApihubConfig struct {

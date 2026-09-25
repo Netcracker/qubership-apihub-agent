@@ -25,6 +25,8 @@ technicalParameters:
   namespacesCacheTTLMin: 1440
   # Optional; TTL value for services cache; If not set, default value: 480; Example: 600
   servicesCacheTTLMin: 480
+  # Optional; Enables pprof profiling endpoints under /debug/pprof/, unauthenticated. Should be disabled on prod envs; If not set, default value: false; Example: false
+  debugEnabled: false
 
 # Section with all security parameters
 security:

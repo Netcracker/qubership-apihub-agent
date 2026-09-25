@@ -24,6 +24,7 @@ type SystemInfoService interface {
 	GetDiscoveryTimeout() time.Duration
 	InsecureProxyEnabled() bool //TODO: remove this after deprecated proxy path is removed
 	ShowDebugInResponse() bool
+	DebugEnabled() bool
 	GetBasePath() string
 	GetPaasPlatform() string
 	GetDiscoveryUrls() config.ApiTypeUrlsConfig
@@ -61,6 +62,7 @@ func setDefaults() {
 	viper.SetDefault("technicalParameters.paasPlatform", "KUBERNETES")
 	viper.SetDefault("technicalParameters.namespacesCacheTTLMin", 1440)
 	viper.SetDefault("technicalParameters.servicesCacheTTLMin", 480)
+	viper.SetDefault("technicalParameters.debugEnabled", false)
 	viper.SetDefault("security.allowedOrigins", []string{})
 	viper.SetDefault("security.insecureProxy", false)
 	viper.SetDefault("security.showDebugInResponse", false)
@@ -131,6 +133,10 @@ func (g systemInfoServiceImpl) InsecureProxyEnabled() bool {
 
 func (g systemInfoServiceImpl) ShowDebugInResponse() bool {
 	return g.config.Security.ShowDebugInResponse
+}
+
+func (g systemInfoServiceImpl) DebugEnabled() bool {
+	return g.config.TechnicalParameters.DebugEnabled
 }
 
 func (g systemInfoServiceImpl) GetNamespacesCacheTTL() time.Duration {
