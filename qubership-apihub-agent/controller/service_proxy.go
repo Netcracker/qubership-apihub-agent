@@ -21,7 +21,7 @@ func NewServiceProxyController(discoveryService service.DiscoveryService, resp r
 		return nil, err
 	}
 	return &serviceProxyControllerImpl{
-		tr:               utils.RegisterPoolStats("proxy", &http.Transport{TLSClientConfig: tlsConfig}),
+		tr:               utils.RegisterPoolStats("proxy", utils.NewPooledTransport(tlsConfig)),
 		discoveryService: discoveryService,
 		responder:        resp,
 	}, nil

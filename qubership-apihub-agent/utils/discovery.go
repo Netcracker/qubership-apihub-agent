@@ -26,7 +26,7 @@ func MakeDiscoveryHttpClient(timeout time.Duration) (http.Client, error) {
 			discoveryTransportErr = err
 			return
 		}
-		discoveryTransport = RegisterPoolStats("discovery", &http.Transport{TLSClientConfig: tlsConfig})
+		discoveryTransport = RegisterPoolStats("discovery", NewPooledTransport(tlsConfig))
 	})
 	if discoveryTransportErr != nil {
 		return http.Client{}, discoveryTransportErr
