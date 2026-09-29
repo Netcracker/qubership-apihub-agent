@@ -215,7 +215,9 @@ func main() {
 	}
 
 	regService.RunAgentRegistrationProcess()
-	service.RunConnectionPoolDiagnostics()
+	if systemInfoService.AgentStatusReportEnabled() {
+		service.RunAgentStatusReporter(systemInfoService.GetAgentStatusReportInterval())
+	}
 
 	listenAddr := os.Getenv("LISTEN_ADDRESS")
 	if listenAddr == "" {

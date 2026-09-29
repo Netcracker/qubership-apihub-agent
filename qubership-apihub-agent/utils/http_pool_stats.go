@@ -5,8 +5,6 @@ import (
 	"net/http/httptrace"
 	"sync"
 	"sync/atomic"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // PoolStats holds live connection counters for a named HTTP transport.
@@ -55,17 +53,19 @@ func RegisterPoolStats(name string, rt http.RoundTripper) http.RoundTripper {
 	return &instrumentedTransport{underlying: rt, stats: stats}
 }
 
-// LogPoolStats logs the current counters for every registered HTTP connection pool.
-func LogPoolStats() {
+// GetPoolStatsSnapshot returns a copy of the current counters for every registered HTTP
+// connection pool, keyed by pool name. Counters are cumulative since process start.
+func GetPoolStatsSnapshot() map[string]PoolStats {
 	poolStatsMu.Lock()
 	defer poolStatsMu.Unlock()
+	snapshot := make(map[string]PoolStats, len(poolStats))
 	for name, stats := range poolStats {
-		log.Infof("HTTP pool %q: in_flight=%d total_requests=%d new_conns=%d reused_conns=%d",
-			name,
-			atomic.LoadInt64(&stats.InFlight),
-			atomic.LoadInt64(&stats.TotalRequests),
-			atomic.LoadInt64(&stats.NewConns),
-			atomic.LoadInt64(&stats.ReusedConns),
-		)
+		snapshot[name] = PoolStats{
+			InFlight:      atomic.LoadInt64(&stats.InFlight),
+			TotalRequests: atomic.LoadInt64(&stats.TotalRequests),
+			NewConns:      atomic.LoadInt64(&stats.NewConns),
+			ReusedConns:   atomic.LoadInt64(&stats.ReusedConns),
+		}
 	}
+	return snapshot
 }

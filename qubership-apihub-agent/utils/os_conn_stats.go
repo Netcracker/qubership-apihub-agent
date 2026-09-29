@@ -16,35 +16,45 @@ const establishedTCPState = "01"
 
 var osStatsUnsupportedLogOnce sync.Once
 
-// LogOSConnStats logs process-level open file descriptor and established TCP connection
-// counts read from /proc. This is Linux-specific; the agent always runs as a Linux
-// container in production, so the check is skipped elsewhere without logging an error.
-func LogOSConnStats() {
+// OSConnStats holds process-level open file descriptor and established TCP connection counts.
+type OSConnStats struct {
+	OpenFDs        int
+	FDLimitSoft    uint64
+	FDLimitHard    uint64
+	EstablishedTCP int
+}
+
+// GetOSConnStatsSnapshot reads process-level open file descriptor and established TCP
+// connection counts from /proc. This is Linux-specific; the agent always runs as a Linux
+// container in production, so on other platforms it returns a zero-value snapshot without
+// an error.
+func GetOSConnStatsSnapshot() (OSConnStats, error) {
 	if runtime.GOOS != "linux" {
 		osStatsUnsupportedLogOnce.Do(func() {
 			log.Debug("OS-level connection stats are only available on Linux; skipping")
 		})
-		return
+		return OSConnStats{}, nil
 	}
 
 	fdCount, err := openFDCount()
 	if err != nil {
-		log.Errorf("Failed to read open file descriptor count: %s", err)
-		return
+		return OSConnStats{}, fmt.Errorf("failed to read open file descriptor count: %w", err)
 	}
 	softLimit, hardLimit, err := fdLimit()
 	if err != nil {
-		log.Errorf("Failed to read file descriptor limit: %s", err)
-		return
+		return OSConnStats{}, fmt.Errorf("failed to read file descriptor limit: %w", err)
 	}
 	establishedCount, err := establishedTCPCount()
 	if err != nil {
-		log.Errorf("Failed to read established TCP connection count: %s", err)
-		return
+		return OSConnStats{}, fmt.Errorf("failed to read established TCP connection count: %w", err)
 	}
 
-	log.Infof("OS connections: open_fds=%d fd_limit_soft=%d fd_limit_hard=%d established_tcp=%d",
-		fdCount, softLimit, hardLimit, establishedCount)
+	return OSConnStats{
+		OpenFDs:        fdCount,
+		FDLimitSoft:    softLimit,
+		FDLimitHard:    hardLimit,
+		EstablishedTCP: establishedCount,
+	}, nil
 }
 
 func openFDCount() (int, error) {

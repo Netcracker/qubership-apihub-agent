@@ -30,6 +30,8 @@ type SystemInfoService interface {
 	GetDiscoveryUrls() config.ApiTypeUrlsConfig
 	GetNamespacesCacheTTL() time.Duration
 	GetServicesCacheTTL() time.Duration
+	AgentStatusReportEnabled() bool
+	GetAgentStatusReportInterval() time.Duration
 }
 
 func NewSystemInfoService() (SystemInfoService, error) {
@@ -63,6 +65,8 @@ func setDefaults() {
 	viper.SetDefault("technicalParameters.namespacesCacheTTLMin", 1440)
 	viper.SetDefault("technicalParameters.servicesCacheTTLMin", 480)
 	viper.SetDefault("technicalParameters.debugEnabled", true)
+	viper.SetDefault("technicalParameters.agentStatusReportEnabled", true)
+	viper.SetDefault("technicalParameters.agentStatusReportIntervalMin", 1440)
 	viper.SetDefault("security.allowedOrigins", []string{})
 	viper.SetDefault("security.insecureProxy", false)
 	viper.SetDefault("security.showDebugInResponse", false)
@@ -145,6 +149,14 @@ func (g systemInfoServiceImpl) GetNamespacesCacheTTL() time.Duration {
 
 func (g systemInfoServiceImpl) GetServicesCacheTTL() time.Duration {
 	return time.Duration(g.config.TechnicalParameters.ServicesCacheTTLMin) * time.Minute
+}
+
+func (g systemInfoServiceImpl) AgentStatusReportEnabled() bool {
+	return g.config.TechnicalParameters.AgentStatusReportEnabled
+}
+
+func (g systemInfoServiceImpl) GetAgentStatusReportInterval() time.Duration {
+	return time.Duration(g.config.TechnicalParameters.AgentStatusReportIntervalMin) * time.Minute
 }
 
 func (g systemInfoServiceImpl) GetBasePath() string {
