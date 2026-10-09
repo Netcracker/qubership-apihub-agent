@@ -255,9 +255,10 @@ func (d discoveryServiceImpl) runDiscovery(secCtx secctx.SecurityContext, namesp
 						if versionsResp != nil {
 							for _, v := range versionsResp.Versions {
 								versions = append(versions, view.BaselineVersion{
-									Version:            v.Version,
-									HasErrors:          v.HasErrors,
-									ChangelogHasErrors: v.ChangelogHasErrors,
+									Version:             v.Version,
+									ApiProcessorVersion: v.ApiProcessorVersion,
+									HasErrors:           v.HasErrors,
+									ChangelogHasErrors:  v.ChangelogHasErrors,
 								})
 							}
 							if defaultVersion == "" && len(versions) > 0 {
